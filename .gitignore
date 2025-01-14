@@ -8,7 +8,6 @@ lib/
 pages/
 **/__pycache__/
 .env
-.env.*
 .vscode/
 .history/
 content/p/
