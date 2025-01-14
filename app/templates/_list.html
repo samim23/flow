@@ -1,0 +1,56 @@
+    <ul id="posts">
+    {%- if showBanner==True and freeze==1 -%}
+      <li class="content_divider"></li>
+    {%- endif -%}
+    {%- for page in pages -%}
+      <li class="h-entry">
+        <div class="post_meta">
+          {%- set authorname = page.meta.author -%}
+          {%- if page.meta.author_name -%}
+            {%- set authorname = page.meta.author_name -%}
+          {%- endif -%}
+          {%- if freeze==1 -%}
+            <div class="p-author h-card post_user_icon" style="background-image: url('{{page.meta.icon}}');"></div>
+            <h2 class="post_date_title"><a rel="bookmark" class="post_date" href="{{ request.url_for("page", path=page.path) }}">{{ page.title }}</a></h2>
+            <a class="post_date" href="{{ request.url_for("page", path=page.path) }}"><time class="dt-published" datetime="{{ page.date }}">{{ page.date }}</time></a>
+            {%- else -%}
+           
+            <div class="p-author h-card post_user_icon" style="background-image: url('{{page.meta.icon}}');"></div>
+            <h2 class="post_date_title"><a rel="bookmark" class="post_date" href="{{ request.url_for("page", path=page.path) }}">{{ page.title }}</a></h2>
+            <a class="post_date" href="{{ request.url_for("page", path=page.path) }}"><time class="dt-published" datetime="{{ page.date }}">{{ page.date }}</time></a>
+            
+            <a href="{{page.path}}" data-jq-dropdown="#jq-dropdown-1" data-horizontal-offset="6" class="post_dropdown">...</a>
+          {%- endif -%}
+        </div>
+        {%- if page.html -%}
+        <div class="e-content content_main">
+          {{ page.html|safe }}
+        </div>
+        {%- endif -%}
+        <div class="content_divider"></div>
+      </li>
+      {%- else -%}
+      <li class="h-entry"><br/>...<br/><br/></li>
+    {%- endfor -%}
+    </ul>
+
+    {%- if total_num > 0 -%}
+    <div id="pagination_container">
+      {%- if current_number > 0 -%}
+        {%- if tag -%}
+          <a rel="next" id="pagination_previous" data-num="{{current_number-1}}" href="{{ request.url_for("archive_tag", num=current_number-1, tag=tag) }}">« Previous</a>
+        {%- else -%}
+          <a rel="next" id="pagination_previous" data-num="{{current_number-1}}" href="{{ request.url_for("archive", num=current_number-1) }}">« Previous</a>
+        {%- endif -%}
+      {%- endif -%}
+      
+      {%- if current_number < total_num -%}
+        {%- if current_number > 0 -%} | {%- endif -%}
+        {%- if tag -%}
+          <a rel="prev" id="pagination_next" href="{{ request.url_for("archive_tag", num=current_number+1, tag=tag) }}">Next »</a>
+        {%- else -%}
+          <a rel="prev" id="pagination_next" href="{{ request.url_for("archive", num=current_number+1) }}">Next »</a>
+        {%- endif -%}
+      {%- endif -%}
+    </div>
+    {%- endif -%}

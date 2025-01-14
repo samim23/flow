@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <title>{{pageTitle}}</title>
+  {% if pageDescription -%}
+    <meta name="description" content="{{pageDescription}}">
+  {%- else -%}
+    <meta name="description" content="{{app.site_description}}">
+  {%- endif %}
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="{{app.author_name}}">
+  {%- if page and page.meta.tags %}
+  <meta name="keywords" content="{{page.meta.tags|join(', ')}}">
+  {% endif -%}
+  <meta name="theme-color" content="#ffffff">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta property="og:title" content="{{pageTitle}}" />
+  <meta property="og:description" content="{% if pageDescription %}{{pageDescription}}{% else %}{{app.site_description}}{% endif %}" />
+  <meta property="og:type" content="{% if page %}article{% else %}website{% endif %}" />
+  <meta property="og:url" content="{{app.site_url}}{% if page %}/p/{{page.path}}/{% endif %}" />
+  {%- if page and page.meta.image -%}
+  <meta property="og:image" content="{{page.meta.image}}" />
+  {% endif %}
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:site" content="@{{app.author_twitter}}" />
+  <meta name="twitter:title" content="{{pageTitle}}" />
+  <meta name="twitter:description" content="{% if pageDescription %}{{pageDescription}}{% else %}{{app.site_description}}{% endif %}" />
+  <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="{{ request.url_for('feedrss') }}" />
+  <link rel='icon' href="{{ request.url_for('static', path='img/favicon.png') }}" type="image/png"/>
+  <link rel="dns-prefetch" href="{{app.site_url}}">
+  {%- if freeze==0 -%}
+  <link rel=stylesheet type=text/css href="{{ request.url_for('static', path='css/font-awesome.css') }}">
+  <link rel=stylesheet type=text/css href="{{ request.url_for('static', path='css/medium-editor.css') }}">
+  <link rel=stylesheet type=text/css href="{{ request.url_for('static', path='css/themes/beagle.css') }}">
+  <link rel=stylesheet type=text/css href="{{ request.url_for('static', path='css/jquery.dropdown.css') }}">
+  <link rel=stylesheet type=text/css href="{{ request.url_for('static', path='css/medium-editor-insert-plugin.min.css') }}">
+  {%- endif %}
+  <link rel=stylesheet type=text/css href="{{ request.url_for('static', path='css/style.css') }}">
+  <link rel="preload" href="{{ request.url_for('static', path='js/client.js') }}" as="script">
+  {%- if freeze==0 -%}
+  <script src="{{ request.url_for('static', path='js/vendor/jquery-3.7.1.min.js') }}"> </script>
+  <script src="{{ request.url_for('static', path='js/vendor/jquery.mark.min.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/vendor/linkify.min.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/vendor/linkify-html.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/vendor/linkify-plugin-hashtag.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/vendor/linkify-plugin-mention.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/vendor/jquery.dropdown.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/vendor/jquery.ui.widget.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/vendor/jquery.iframe-transport.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/vendor/jquery.fileupload.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/vendor/jquery-sortable-min.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/vendor/jquery.cycle2.min.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/vendor/jquery.cycle2.center.min.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/vendor/medium-editor.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/vendor/handlebars.runtime.min.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/vendor/medium-editor-insert-plugin.min.js') }}"> </script>
+  <script src="{{ request.url_for('static', path='js/vendor/autolist.min.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/main.js') }}"></script>
+  {%- endif %}
+  {% if page %}
+  <link rel="canonical" href="{{app.site_url}}/p/{{page.path}}/" />
+  {% endif %}
+  {%- if isArchive == True -%}
+  <meta name="robots" content="noindex, follow">
+  {%- endif %}
+  {%- if page %}
+  <script type="application/ld+json">{
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "{{page.title}}",
+    "datePublished": "{{page.date.isoformat()}}",
+    "dateModified": "{{page.date.isoformat()}}",
+    "author": {
+      "@type": "Person",
+      "name": "{{page.meta.author_name}}",
+      "url": "{{app.site_url}}"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "{{app.site_name}}",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "{{app.author_image}}"
+      }
+    }{% if page.meta.tags %},"keywords": "{{page.meta.tags|join(', ')}}"{% endif %},"url": "{{app.site_url}}/p/{{page.path}}/",
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "{{app.site_url}}/p/{{page.path}}/"
+    }{% if page.meta.image %},"image": {
+      "@type": "ImageObject",
+      "url": "{{page.meta.image}}"
+    }{% endif %}
+  }</script>{% endif %}
+</head>
+<body>
+  {% if freeze==1 %}
+  <div id="site">
+  {%- else -%}
+  <div id="site" site="{{app.site_url}}" author="{{app.author}}" author_name="{{app.author_name}}" author_image="{{app.author_image}}">
+  {%- endif %}
+    <header id="top-container">
+      <div id="site_logo">
+        {%- if request.url_path == "/" -%}
+        <h1><a id="site_logo_icon" href="{{ request.url_for("index") }}">{{app.site_name}}</a></h1>
+        {%- else -%}
+        <h1><a id="site_logo_icon" href="{{ request.url_for("index") }}">{{app.site_name}}</a></h1>
+        {%- endif -%}
+      </div>
+
+      {%- if freeze==1 -%}
+      <div class="post_static_container">
+        <div class="post_static">
+          <a title="Tags" href="{{ request.url_for('tags') }}">tags</a>
+        </div>
+        <div class="post_static"><a title="About" href="/p/about/">about</a></div>
+      </div>
+      {%- else -%}
+      <nav id="editor_tools">
+        <div class="post_static"><a title="search" href="{{ request.url_for('search') }}"><i class="fa fa-search"></i></a></div>
+        <div class="post_static" data-jq-dropdown="#jq-dropdown-publish" data-horizontal-offset="6" class="post_dropdown"><a title="publish" href="/">publish</a></div>
+        <div class="post_static"><a title="tag" href="{{ request.url_for('tags') }}">tag</a></div>
+      </nav>
+      {%- endif %}
+    </header>
+    {%- if freeze==0 %}
+    <div class="note_publish"></div>
+    <div id="jq-dropdown-publish" class="jq-dropdown jq-dropdown-tip jq-dropdown-relative jq-dropdown-anchor-right">
+      <ul class="jq-dropdown-menu" style="padding:15px;">
+        <li><b>Publish to</b></li>
+        <li style="margin-top:3px;margin-bottom:15px;"><small><a href="{{app.site_url}}" target="_blank">{{app.site_url}}</a></small></li>
+        <li><a title="publish" href="/" id="btn_publish"><b>Publish</b></a></li>
+      </ul>
+    </div>
+    <div id="jq-dropdown-1" class="jq-dropdown jq-dropdown-tip jq-dropdown-relative jq-dropdown-anchor-right">
+      <ul class="jq-dropdown-menu">
+        <li><a class="post_edit" title="Edit">🖋 Edit</a></li>
+        <li class="jq-dropdown-divider"></li>
+        <li><a class="post_delete" title="Delete">🗑 Delete</a></li>
+      </ul>
+    </div>
+    {%- endif %}
+    <main>
+      {%- block content -%}
+      <p>Default content to be displayed</p>
+      {%- endblock content -%}
+    </main>
+    <footer id="footer"></footer>
+    <script src="{{ request.url_for('static', path='js/client.js') }}"></script>
+  </div>
+</body>
+</html>

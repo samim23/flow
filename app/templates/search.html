@@ -1,0 +1,31 @@
+{% extends "base.html" %} {% block content %}
+<div class="content_divider"></div>
+<form id="search_form">
+	<div class="settings_container" style="margin: 0px; margin-top: 6px">
+		<input
+			id="search_input"
+			placeholder="search term"
+			type="text"
+			name="search"
+			value="{{query}}"
+		/>
+	</div>
+	<button
+		style="position: absolute; margin-top: 6px; margin-left: 5px"
+		type="submit"
+		id="settings_search"
+	>
+		Search
+	</button>
+</form>
+<div class="content_divider" style="margin-top: 0px"></div>
+{% with pages=pages, showBanner=True, showFeed=False %} {% include "_list.html"
+%} {% endwith %}
+<p id="loading">
+	<img
+		src="{{ request.url_for('static', path='img/loading.gif') }}"
+		alt="Loading..."
+		width="80"
+	/>
+</p>
+{% endblock content %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="tags-header">
+    <h2 class="page_title" style="margin-right: auto;">Tag</h2>
+    <div class="tags-stats">
+      <b>{{postamount}} Posts</b> 
+    </div>
+    <div class="tag-search-container">
+      <div class="tags-search">
+        <input type="text" id="tagSearch" placeholder="🔍 Search tags..." class="tag-search-input">
+      </div>
+      <a class="tags_explore" href="{{ request.url_for('explore') }}">🕒 Explore</a>
+    </div>
+</div>
+<div class="tags-cloud">
+{% with tags=tags %}
+    {% for tag in tags %}
+    <a href="{{ request.url_for("tag", tag=tag[0]) }}" title="{{tag[0]}}" class="tag_container" data-tag-name="{{tag[0]}}">{{tag[0]}}<span class="tag_container_counter">{{tag[1]}}</span></a>
+    {% endfor %}
+    <div class="content_divider"></div>
+{% endwith %}
+</div>
+<script>
+  function initTagSearch() {
+    const searchInput = document.getElementById('tagSearch');
+    const tagElements = document.querySelectorAll('.tag_container');
+    
+    // Store original tags display state
+    let tagsData = Array.from(tagElements).map(tag => ({
+        element: tag,
+        name: tag.getAttribute('data-tag-name').toLowerCase()
+    }));
+
+    function filterTags(searchTerm) {
+        searchTerm = searchTerm.toLowerCase().trim();
+        
+        tagsData.forEach(({ element, name }) => {
+            if (searchTerm === '') {
+                element.style.display = ''; // Show all when search is empty
+            } else {
+                element.style.display = name.includes(searchTerm) ? '' : 'none';
+            }
+        });
+    }
+
+    // Add input event listener with debounce for better performance
+    let debounceTimeout;
+    searchInput.addEventListener('input', (e) => {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+            filterTags(e.target.value);
+        }, 150); // Delay of 150ms
+    });
+}
+
+// Add this to your existing formatContent function
+function formatContent() {
+    $(".content_main").each(function (index, element) {
+        formatContentHeight(element);
+        
+        $(element).find('a[href^="/tag/"]').filter(function() {
+            return $(this).text().startsWith('#');
+        }).addClass('hashtag-link');
+    });
+
+    // Initialize tag search
+    initTagSearch();
+}
+</script>
+{% endblock content %}

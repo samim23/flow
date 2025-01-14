@@ -1,0 +1,15 @@
+{% extends "base.html" %} {% block content %}
+<div class="container mx-auto px-4 py-8">
+	<div class="max-w-md mx-auto bg-white rounded-lg shadow-md overflow-hidden">
+		<div class="p-6">
+			<h1 class="text-2xl font-bold text-gray-900 mb-4">
+				Authentication Required
+			</h1>
+			<p class="text-gray-600 mb-4">{{ error_message }}</p>
+			<div class="mt-6">
+				<a href="/" class="text-blue-500 hover:text-blue-700">Return to Home</a>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	<url>
+		<loc>{{app.site_url}}</loc>
+		<lastmod>{{ datenow.strftime('%Y-%m-%d') }}</lastmod>
+	</url>
+	{% for page in pages %}
+	<url>
+		<loc>{{app.site_url}}/p/{{page.path}}/</loc>
+		<lastmod>{{ page.date.strftime('%Y-%m-%d') }}</lastmod>
+	</url>
+	{% endfor %}
+</urlset>

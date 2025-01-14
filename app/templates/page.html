@@ -1,0 +1,47 @@
+{% extends "base.html" -%} {% block content %}
+<div class="content_divider"></div>
+<div class="post h-entry">
+	<div class="post_meta">
+		{%- set authorname = page.meta.author -%} {%- if page.meta.author_name -%}
+		{%- set authorname = page.meta.author_name -%} {%- endif %} {%- if freeze==1
+		-%}
+		<div
+			class="p-author h-card post_user_icon"
+			style="background-image: url('{{page.meta.icon}}');"
+		></div>
+		<h2 class="post_date_title post_date">{{ page.title }}</h2>
+		<time class="dt-published" datetime="{{ page.date }}">{{ page.date }}</time>
+		{%- else -%}
+		<div
+			class="p-author h-card post_user_icon"
+			style="background-image: url('{{page.meta.icon}}');"
+		></div>
+		<h2 class="post_date_title post_date">{{ page.title }}</h2>
+		<time class="dt-published" datetime="{{ page.date }}">{{ page.date }}</time>
+
+		{%- if page.meta.status=='private' -%}
+		<span class="post_status">
+			<a href="/?status=private">
+				<img
+					src="{{ request.url_for('static', path='img/lock.png') }}"
+					width="10"
+					alt="{{page.meta.status}}"
+					title="{{page.meta.status}}"
+				/>
+			</a>
+		</span>
+		{%- endif %}
+
+		<a
+			href="{{page.path}}"
+			data-jq-dropdown="#jq-dropdown-1"
+			data-horizontal-offset="6"
+			class="post_dropdown"
+			>...</a
+		>
+		{%- endif %}
+	</div>
+	<div class="e-content">{{ page.html|safe }}</div>
+</div>
+<div class="content_divider content_divider_post"></div>
+{% endblock content %}

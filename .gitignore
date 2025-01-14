@@ -1,0 +1,15 @@
+build/
+build2/
+upload/
+cache/
+template_cache/
+temp/
+lib/
+pages/
+**/__pycache__/
+.env
+.env.*
+.vscode/
+.history/
+content/p/
+app/static/log.json

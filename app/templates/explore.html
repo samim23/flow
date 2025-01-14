@@ -1,0 +1,205 @@
+{% extends "base.html" %} {% block content %}
+<script src="{{ request.url_for('static', path='js/vendor/Chart.min.js') }}"></script>
+<div class="explore_title_container">
+	<h2 class="page_title">explore</h2>
+	<div id="date_filter"></div>
+</div>
+<canvas id="myChart" width="400" height="250"></canvas>
+<h2>
+	<span id="postsdate">Click on date dots to explore posts</span>
+	<small id="postperyear" style="float: right"></small>
+</h2>
+<hr />
+<div id="posts"></div>
+
+<script>
+		var ctx = document.getElementById("myChart");
+		var labels = [];
+		var d = {{ stats | tojson }};
+
+		function addFilterButtons(years, activeYear) {
+		  var dateFilter = document.getElementById("date_filter");
+		  dateFilter.innerHTML = ""; // Clear existing buttons
+
+		  years.forEach((year) => {
+		    var btn = document.createElement("button");
+		    btn.className = "button_filter" + (year === activeYear ? " button_active" : "");
+		    btn.textContent = year;
+
+		    btn.addEventListener("click", function () {
+		      var filter = filterPosts(year, d);
+		      var finalDates = filter[0];
+		      var finalPosts = filter[1];
+		      allposts = filter[2];
+
+		      barChartData.datasets.forEach((dataset) => {
+		        dataset.data = finalPosts;
+		      });
+		      barChartData.labels = finalDates;
+		      window.chart.update();
+
+		      addFilterButtons(years, year);
+		    });
+
+		    dateFilter.appendChild(btn);
+		  });
+		}
+
+		function filterPosts(filter = "", d) {
+		  var finalDates = [];
+		  var finalPostsAmount = [];
+		  var finalPosts = [];
+
+		  function getDaysArray(start, end) {
+		    var arr = [];
+		    var dt = new Date(start);
+		    while (dt <= end) {
+		      arr.push(new Date(dt));
+		      dt.setDate(dt.getDate() + 1);
+		    }
+		    return arr;
+		  }
+
+		  var years = [];
+
+		  d.dates.forEach((date, index) => {
+		    var parsedDate = date.split("-");
+		    var year = parsedDate[0];
+
+		    if (!years.includes(year)) {
+		      years.push(year);
+		    }
+
+		    if (year === filter || filter === "") {
+		      finalDates.push(date);
+		      finalPostsAmount.push(d.postsamount[index]);
+		      finalPosts.push(d.posts[index]);
+
+		      if (index < d.dates.length - 1) {
+		        var date1 = new Date(date);
+		        var date2 = new Date(d.dates[index + 1]);
+		        var Difference_In_Days = (date2 - date1) / (1000 * 3600 * 24);
+
+		        if (Difference_In_Days > 1) {
+		          var daylist = getDaysArray(date1, date2).map((v) => v.toISOString().slice(0, 10));
+		          daylist.shift();
+		          daylist.pop();
+
+		          daylist.forEach((emptyDate) => {
+		            finalDates.push(emptyDate);
+		            finalPostsAmount.push(0);
+		            finalPosts.push("");
+		          });
+		        }
+		      }
+		    }
+		  });
+
+		  var postPerYear = finalPostsAmount.reduce((a, b) => a + b, 0);
+		  document.getElementById("postperyear").textContent = `Posts in ${filter}: ${postPerYear}`;
+
+		  addFilterButtons(years, years[years.length - 1]);
+		  return [finalDates, finalPostsAmount, finalPosts];
+		}
+
+		var newestDate = d.dates[d.dates.length - 1].split("-")[0];
+		var filter = filterPosts(newestDate, d);
+		var finalDates = filter[0];
+		var finalPosts = filter[1];
+		var allposts = filter[2];
+
+		var barChartData = {
+		  datasets: [
+		    {
+		      label: "Posts",
+		      data: finalPosts,
+		      borderWidth: 1.5,
+		      fill: true,
+		      pointRadius: 4.5,
+		      pointBackgroundColor: "#DCEDC8",
+		      lineTension: 0.3,
+		    },
+		  ],
+		  labels: finalDates,
+		};
+
+		window.chart = new Chart(ctx, {
+	  type: "line",
+	  data: barChartData,
+	  options: {
+	    responsive: true,
+	    plugins: {
+	      legend: {
+	        display: false,
+	      },
+	    },
+	    onClick: (e) => {
+			var activePoints = window.chart.getElementsAtEventForMode(e, "nearest", { intersect: true }, true);
+			if (activePoints.length) {
+				var selectedIndex = activePoints[0].index;
+				var postPerDay = allposts[selectedIndex];
+				var postsDay = barChartData.labels[selectedIndex];
+
+				var postsContainer = document.getElementById("posts");
+				postsContainer.innerHTML = "";
+
+				if (postPerDay.length > 0) {
+				document.getElementById("postsdate").textContent = postsDay;
+
+				postPerDay.slice().reverse().forEach((postPath) => {
+					var postContainer = document.createElement("div");
+					postContainer.className = "explore-post-container";
+					postsContainer.appendChild(postContainer);
+
+					fetch(`/p/${postPath}`)
+					.then((response) => response.text())
+					.then((html) => {
+						var tempDiv = document.createElement("div");
+						tempDiv.innerHTML = html;
+						var content = tempDiv.querySelector(".h-entry");
+						if (content) {
+						postContainer.innerHTML = content.innerHTML;
+						var dateElement = postContainer.querySelector(".dt-published");
+						if (dateElement) {
+							var link = document.createElement("a");
+							link.href = `/p/${postPath}`;
+							dateElement.parentNode.replaceChild(link, dateElement);
+							link.appendChild(dateElement);
+						}
+						}
+
+						// Call format functions for newly added content
+						formatDate();
+						formatContent();
+						formatMedia();
+
+						// Additional hooks (if required)
+						if (typeof repost === "function") repost();
+						if (typeof editpost === "function") editpost();
+					});
+				});
+
+				window._paq.push(["trackEvent", "explore", postsDay]);
+				}
+			}
+		},
+	    scales: {
+	      x: {
+	        grid: {
+	          color: "rgba(0, 0, 0, 0)",
+	        },
+	      },
+	      y: {
+	        ticks: {
+	          stepSize: 1,
+	        },
+	        grid: {
+	          color: "rgba(0, 0, 0, 0.04)",
+	        },
+	      },
+	    },
+	  },
+	});
+</script>
+
+{% endblock content %}

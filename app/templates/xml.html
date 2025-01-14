@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>{{app.site_name}}</title>
+  <link>{{app.site_url}}</link>
+  <description>{{app.site_description}}</description>
+  <pubDate>{{ pubdate.strftime('%a, %d %b %Y %H:%M:%S %z') }}{{local_timezone}}</pubDate>
+  <language>en-us</language>
+  <generator>flow</generator>
+  <atom:link href="{{app.site_url}}/rss.xml" rel="self" type="application/rss+xml" />
+  {% for page in pages %}
+  <item>
+    <title>{{page.title}}</title>
+    <link>{{app.site_url}}/p/{{page.path}}/</link>
+    <guid isPermaLink="true">{{app.site_url}}/p/{{page.path}}/</guid>
+    <pubDate>{{ page.date.strftime('%a, %d %b %Y %T') }} {{local_timezone}}</pubDate>
+    <description></description>
+  </item>
+  {% endfor %}
+</channel>
+</rss>

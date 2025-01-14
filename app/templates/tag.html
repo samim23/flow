@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content_divider"></div>
+<h2 class="page_title"><a href="{{ request.url_for("tags") }}">tag</a> > <span id="tag">{{ tag }}</span></h2>
+<div class="content_divider"></div>
+{% with pages=pages, showBanner=False, current_number=current_number, total_num=total_num %}
+    {% include "_list.html" %}
+    <p id="loading"><img src="{{ request.url_for('static', path='img/loading.gif') }}" alt="Loading..." width="80"/></p>
+{% endwith %}
+{% endblock content %}
