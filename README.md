@@ -53,6 +53,14 @@ python3 flow.py
 
 3. Visit `http://127.0.0.1:2323/` to start creating content
 
+## Publishing via FTP
+
+In your .env config set `server_ftp_enabled=true` and add your server infos.
+
+## About Page Setup
+
+Create a post in the UI and then rename the file in your `/content/p/` folder to `about.md`
+
 ## Cache Management
 
 Flow uses intelligent caching to minimize build times by only regenerating changed content. If you need to manually clear the cache, here are the available commands:
