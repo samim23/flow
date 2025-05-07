@@ -7,14 +7,28 @@
 		-%}
 		<div
 			class="p-author h-card post_user_icon"
+			{%-
+			if
+			page.meta.icon
+			%}
 			style="background-image: url('{{page.meta.icon}}');"
+			{%
+			endif
+			%}
 		></div>
 		<h2 class="post_date_title post_date">{{ page.title }}</h2>
 		<time class="dt-published" datetime="{{ page.date }}">{{ page.date }}</time>
 		{%- else -%}
 		<div
 			class="p-author h-card post_user_icon"
+			{%-
+			if
+			page.meta.icon
+			%}
 			style="background-image: url('{{page.meta.icon}}');"
+			{%
+			endif
+			%}
 		></div>
 		<h2 class="post_date_title post_date">{{ page.title }}</h2>
 		<time class="dt-published" datetime="{{ page.date }}">{{ page.date }}</time>
