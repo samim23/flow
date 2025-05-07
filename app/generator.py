@@ -305,7 +305,7 @@ class StaticSiteGenerator:
     async def write_file(self, path: Path, content: str):
         """Write file asynchronously"""
         await asyncio.to_thread(path.parent.mkdir, parents=True, exist_ok=True)
-        await asyncio.to_thread(path.write_text, content)
+        await asyncio.to_thread(path.write_text, content, encoding='utf-8')
 
     async def generate_page(self, template_name: str, output_path: Path, context: Dict[str, Any]):
         """Generate a single page with caching"""
