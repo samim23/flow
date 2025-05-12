@@ -55,7 +55,11 @@
 		>
 		{%- endif %}
 	</div>
-	<div class="e-content">{{ page.html|safe }}</div>
+	<div
+		class="e-content {% if page.meta.custom_css_class %}{{ page.meta.custom_css_class }}{% endif %}"
+	>
+		{{ page.html|safe }}
+	</div>
 </div>
 <div class="content_divider content_divider_post"></div>
 {% endblock content %}

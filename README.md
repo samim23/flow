@@ -85,6 +85,49 @@ Add `?freeze=1` to any URL to preview how it will look when published.
 
 Configure your analytics by editing `/static/js/analytics.js`.
 
+## Customizing Posts with Frontmatter
+
+Flow supports special frontmatter fields in your Markdown (`.md`) files to customize how individual posts are rendered and styled:
+
+### Server-Side Markdown Rendering
+
+By default, content in `.md` files is treated as HTML. To enable server-side Markdown parsing (which supports standard Markdown syntax, tables, math rendering with MathJax, etc.), add the following to your post's frontmatter:
+
+```yaml
+render_as_markdown: true
+```
+
+When this is set, the content of your post (after the `---` frontmatter block) will be processed as Markdown.
+
+Flow's Markdown processor supports the full range of standard Markdown syntax, including:
+
+- **Text Formatting**: Bold with `**double asterisks**` or `__double underscores__`,
+  italic with `*single asterisks*` or `_single underscores_`
+- **Headers**: Created with `#` at the beginning of a line
+- **Lists**: Both ordered (numbered) and unordered (bullet) lists
+- **Links**: `[Link text](URL)`
+- **Images**: `![Alt text](image-url)`
+- **Tables**: Standard Markdown table format
+- **Code Blocks**: Both inline with backticks and fenced code blocks
+- **Math**: LaTeX-style math expressions with MathJax
+- **HTML**: You can mix HTML with Markdown when needed
+
+### Per-Post Custom CSS Class
+
+To apply a custom CSS class to the main content wrapper of a specific post, allowing for unique styling (e.g., a different font), add the following to the frontmatter:
+
+```yaml
+custom_css_class: "your-custom-class-name"
+```
+
+For example:
+
+```yaml
+custom_css_class: "text-serif"
+```
+
+This class will be added to the `div` that wraps your post's content, which you can then target in your CSS files.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

@@ -9,8 +9,45 @@ import logging
 import hashlib
 import asyncio
 import time
+import markdown2
+import re  # Add regex for pattern matching
 
 logger = logging.getLogger(__name__)
+
+# Helper function to preprocess Markdown content
+def preprocess_markdown(content: str) -> str:
+    """
+    Preprocess Markdown content to ensure certain syntax works correctly.
+    This function handles both math expressions and emphasis formatting.
+    """
+    # First, process math expressions to fix *{A} syntax
+    # Find all math expressions (both inline and display)
+    math_pattern = r'\\(?:\[|\().*?\\(?:\)|\])'
+    
+    def fix_math_expression(match):
+        math_expr = match.group(0)
+        # Replace *{A} with {A} within math expressions
+        math_expr = re.sub(r'\*{([^}]+)}', r'{\1}', math_expr)
+        return math_expr
+    
+    # Apply the fix to all math expressions
+    content = re.sub(math_pattern, fix_math_expression, content)
+    
+    # Then process emphasis with underscores
+    # Pattern for _single word_ with underscores
+    # Matches _word_ but not part_of_identifier
+    single_underscore_pattern = r'(?<!\w)_([^\s_](?:[^_]*[^\s_])?)_(?!\w)'
+    
+    # Replace _word_ with *word* for italics (where appropriate)
+    content = re.sub(single_underscore_pattern, r'*\1*', content)
+    
+    # Pattern for __double word__ with underscores (bold)
+    double_underscore_pattern = r'(?<!\w)__([^\s_](?:[^_]*[^\s_])?)__(?!\w)'
+    
+    # Replace __word__ with **word** for bold (where appropriate)
+    content = re.sub(double_underscore_pattern, r'**\1**', content)
+    
+    return content
 
 class PageMetadata(BaseModel):
     title: str
@@ -21,6 +58,8 @@ class PageMetadata(BaseModel):
     author_name: Optional[str] = None
     icon: Optional[str] = None
     link: Optional[str] = "/"
+    render_as_markdown: bool = False
+    custom_css_class: Optional[str] = None
 
     @validator("date", pre=True, always=True)
     def validate_date(cls, value):
@@ -57,11 +96,35 @@ class Page(BaseModel):
             post = frontmatter.load(file_path)
             # logger.debug(f"Metadata loaded: {post.metadata}")
             metadata = PageMetadata(**post.metadata)
+
+            processed_html: str
+            if metadata.render_as_markdown:
+                # Preprocess Markdown content to ensure underscores for emphasis work correctly
+                preprocessed_content = preprocess_markdown(post.content)
+                
+                # Parse content as Markdown
+                # Configure markdown2 with specific extras for proper handling of Markdown syntax
+                md_parser = markdown2.Markdown(
+                    extras=[
+                        "fenced-code-blocks", 
+                        "tables",
+                        "markdown-in-html",  # Process Markdown inside HTML
+                        "break-on-newline",  # Better handling of line breaks
+                        "smarty-pants",      # Smart typography for quotes, dashes, etc.
+                    ]
+                )
+                
+                # Process the content
+                processed_html = md_parser.convert(preprocessed_content)
+            else:
+                # Treat content as raw HTML
+                processed_html = post.content
+            
             return cls(
                 metadata=metadata,
                 content=post.content,
                 path=file_path.stem,
-                html=post.content
+                html=processed_html
             )
         except Exception as e:
             logger.error(f"Error loading file {file_path}: {str(e)}")
@@ -163,9 +226,9 @@ class FileMonitor:
         # Adjust interval based on content size
         file_count = len(list(self.content_dir.glob("**/*.md")))
         if file_count > 10000:
-            check_interval = max(check_interval, 10.0)
+            check_interval = max(check_interval, 6.0)
         elif file_count > 5000:
-            check_interval = max(check_interval, 7.0)
+            check_interval = max(check_interval, 5.0)
         
         # logger.info(f"Starting file monitor with {check_interval}s interval for {file_count} files")
         
