@@ -33,13 +33,8 @@ def preprocess_markdown(content: str) -> str:
     # Apply the fix to all math expressions
     content = re.sub(math_pattern, fix_math_expression, content)
     
-    # Then process emphasis with underscores
-    # Pattern for _single word_ with underscores
-    # Matches _word_ but not part_of_identifier
-    single_underscore_pattern = r'(?<!\w)_([^\s_](?:[^_]*[^\s_])?)_(?!\w)'
-    
-    # Replace _word_ with *word* for italics (where appropriate)
-    content = re.sub(single_underscore_pattern, r'*\1*', content)
+    # No need to convert _text_ to *text* for italics anymore
+    # The markdown2 "code-friendly" extra will handle this by disabling underscore emphasis
     
     # Pattern for __double word__ with underscores (bold)
     double_underscore_pattern = r'(?<!\w)__([^\s_](?:[^_]*[^\s_])?)__(?!\w)'
@@ -111,6 +106,7 @@ class Page(BaseModel):
                         "markdown-in-html",  # Process Markdown inside HTML
                         "break-on-newline",  # Better handling of line breaks
                         "smarty-pants",      # Smart typography for quotes, dashes, etc.
+                        "code-friendly",     # Disable underscore-based emphasis (_text_)
                     ]
                 )
                 
