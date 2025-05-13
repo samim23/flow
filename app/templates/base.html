@@ -39,6 +39,7 @@
   {%- endif %}
   <link rel=stylesheet type=text/css href="{{ request.url_for('static', path='css/style.css') }}">
   <link rel="preload" href="{{ request.url_for('static', path='js/client.js') }}" as="script">
+  <script src="{{ request.url_for('static', path='js/vendor/mathjax/es5/tex-mml-chtml.js') }}"></script>
   {%- if freeze==0 -%}
   <script src="{{ request.url_for('static', path='js/vendor/jquery-3.7.1.min.js') }}"> </script>
   <script src="{{ request.url_for('static', path='js/vendor/jquery.mark.min.js') }}"></script>
@@ -57,7 +58,6 @@
   <script src="{{ request.url_for('static', path='js/vendor/handlebars.runtime.min.js') }}"></script>
   <script src="{{ request.url_for('static', path='js/vendor/medium-editor-insert-plugin.min.js') }}"> </script>
   <script src="{{ request.url_for('static', path='js/vendor/autolist.min.js') }}"></script>
-  <script src="{{ request.url_for('static', path='js/vendor/mathjax/es5/tex-mml-chtml.js') }}"></script>
   <script src="{{ request.url_for('static', path='js/main.js') }}"></script>
   {%- endif %}
   {% if page %}
