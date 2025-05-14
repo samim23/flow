@@ -95,7 +95,12 @@ function cleanContent(elContent) {
 	elContent = elContent.replaceAll("<p><br></p>", ""); // medium insert bug fix
 	elContent = replaceLast(elContent, "<p><br></p>", ""); // medium insert bug fix
 
-	var tempDom = $("<output>").append($.parseHTML(elContent));
+	// Clean up any remaining blob URLs - replace with their proper uploaded path
+	// Blob URLs will have already been replaced with proper paths if upload completed
+	// This is a fallback to prevent blob URLs being saved
+	elContent = elContent.replace(/src="blob:[^"]+"/g, 'src="" alt="Image upload in progress"');
+
+	var tempDom = $("<o>").append($.parseHTML(elContent));
 	// tempDom.find('*').removeAttr('style');
 	tempDom.find("a").removeAttr("style");
 	tempDom.find("p").removeAttr("style");
@@ -154,49 +159,13 @@ function getHashtag(text) {
 // setup editor
 function editor_setup(container, editor) {
 	container.mediumInsert({
-		editor: editor, // (MediumEditor) Instance of MediumEditor
-		enabled: true, // (boolean) If the plugin is enabled
+		editor: editor,
 		addons: {
-			// (object) Addons configuration
 			images: {
-				label: '<span class="fa fa-camera"></span>',
-				deleteScript: null,
-				deleteMethod: "POST",
-				fileDeleteOptions: {},
 				preview: true,
 				captions: true,
 				captionPlaceholder: "Type caption for image (optional)",
-				autoGrid: 2,
-				styles: {
-					wide: {
-						label: '<span class="fa fa-align-justify"></span>',
-						added: function ($el) {},
-						removed: function ($el) {},
-					},
-					left: {
-						label: '<span class="fa fa-align-left"></span>',
-					},
-					right: {
-						label: '<span class="fa fa-align-right"></span>',
-					},
-					grid: {
-						label: '<span class="fa fa-th"></span>',
-					},
-				},
-				actions: {
-					remove: {
-						label: '<span class="fa fa-times"></span>',
-						clicked: function ($el) {
-							var $event = $.Event("keydown");
-							$event.which = 8;
-							$(document).trigger($event);
-						},
-					},
-				},
-				messages: {
-					acceptFileTypesError: "This file is not in a supported format: ",
-					maxFileSizeError: "This file is too big: ",
-				},
+				autoGrid: 3,
 				fileUploadOptions: {
 					url: "/upload",
 					paramName: "file",
@@ -223,6 +192,14 @@ function editor_setup(container, editor) {
 								'<div class="upload-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000;"><div class="upload-progress" style="text-align: center; color: #333;"><b>Preparing...</b><br/><img src="/static/img/loading.gif" width="39"/></div></div>'
 							);
 						}
+						
+						// Store the blob URL for later replacement
+						if (data.files && data.files[0]) {
+							var blobUrl = URL.createObjectURL(data.files[0]);
+							data.blobUrl = blobUrl;
+							$imageContainer.attr('data-blob-url', blobUrl);
+						}
+						
 						return data.submit();
 					},
 					xhr: function () {
@@ -290,6 +267,21 @@ function editor_setup(container, editor) {
 							uploadsInProgress = 0;
 						}
 					},
+					done: function(e, data) {
+						// Replace the blob URL with the actual file URL in the HTML
+						if (data.blobUrl && data.result && data.result.files && data.result.files[0]) {
+							var actualUrl = data.result.files[0].url;
+							// Find images with this blob URL and update them
+							$('img[src="' + data.blobUrl + '"]').attr('src', actualUrl);
+							
+							// Also find by the data attribute (more reliable)
+							$('figure[data-blob-url="' + data.blobUrl + '"]').find('img').attr('src', actualUrl);
+							$('figure[data-blob-url="' + data.blobUrl + '"]').removeAttr('data-blob-url');
+							
+							// Revoke the blob URL to free memory
+							URL.revokeObjectURL(data.blobUrl);
+						}
+					}
 				},
 			},
 			embeds: {
@@ -511,13 +503,19 @@ editpost = function () {
 			class: "content_btn btn_save",
 			text: "Save",
 			click: function () {
-				editing = false;
-				post_edit.removeClass(".editable");
-				$(".content_btn").remove();
-
 				// get editor content
 				var allContents = editor2.serialize();
 				var elContent = allContents["element-0"].value;
+
+				// Check for blob URLs - if found, alert user to wait for uploads
+				if (contentHasBlobUrls(elContent)) {
+					alert("Please wait for image uploads to complete before saving.");
+					return;
+				}
+
+				editing = false;
+				post_edit.removeClass(".editable");
+				$(".content_btn").remove();
 
 				elContent = cleanContent(elContent);
 				var hashtags = getHashtag(elContent)[0];
@@ -612,6 +610,10 @@ function getDateForFilename() {
 	);
 }
 
+function contentHasBlobUrls(content) {
+	return /src="blob:[^"]+"/g.test(content);
+}
+
 function newpost() {
 	var editor = editor_create($(".editable"), $("#submit_btn"));
 
@@ -622,6 +624,12 @@ function newpost() {
 			editor.serialize()[Object.keys(editor.serialize())[0]].value;
 		if (elContent.length == "0") {
 			console.log("no text");
+			return;
+		}
+
+		// Check for blob URLs - if found, alert user to wait for uploads
+		if (contentHasBlobUrls(elContent)) {
+			alert("Please wait for image uploads to complete before saving.");
 			return;
 		}
 

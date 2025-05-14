@@ -477,7 +477,14 @@ async def upload(file: UploadFile = File(...)):
         content = await file.read()
         file_path.write_bytes(content)
         file_size = file_path.stat().st_size
-        file_url = f"/upload/{filename}"
+        
+        # Get site path prefix for URL construction
+        site_path_prefix = settings.site_path_prefix.rstrip('/')
+        if site_path_prefix and not site_path_prefix.startswith('/'):
+            site_path_prefix = '/' + site_path_prefix
+            
+        # Construct URL based on whether site is in a subdirectory
+        file_url = f"{site_path_prefix}/upload/{filename}"
 
         # Upload to FTP if enabled
         if settings.server_ftp_enabled:
