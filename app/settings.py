@@ -3,6 +3,7 @@
 from pydantic_settings import BaseSettings
 from pathlib import Path
 from typing import List, Set
+import re
 
 class Settings(BaseSettings):
     # Basic app settings
@@ -52,5 +53,33 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Sanitize site_path_prefix to handle Windows paths
+        self._sanitize_site_path_prefix()
+            
+    def _sanitize_site_path_prefix(self):
+        """Clean the site_path_prefix to ensure it doesn't contain Windows paths"""
+        if not self.site_path_prefix:
+            self.site_path_prefix = "/"
+            return
+            
+        # Strip Windows drive letters and paths
+        sanitized = re.sub(r'^[A-Za-z]:[/\\].*?(?=/|$)', '', self.site_path_prefix)
+        # Remove Git paths
+        sanitized = re.sub(r'^/Git(/|$)', '/', sanitized)
+        sanitized = re.sub(r'^Git(/|$)', '/', sanitized)
+        # Remove Program Files path
+        sanitized = re.sub(r'/Program Files(/|$)', '/', sanitized)
+        
+        # Ensure proper formatting - always has leading slash
+        sanitized = '/' + sanitized.strip('/')
+        
+        # If it was just '/', keep it as '/'
+        if sanitized == '//':
+            sanitized = '/'
+            
+        self.site_path_prefix = sanitized
 
 settings = Settings()

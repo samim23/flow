@@ -9,5 +9,4 @@ if (
 	console.log("flow", window.location.href);
 } else {
 	// insert your analytics code here
-	})();
 }
