@@ -268,15 +268,15 @@ function formatContentHeight(element) {
 function formatContent() {
 	document.querySelectorAll(".content_main").forEach((element) => {
 		formatContentHeight(element);
-		element.querySelectorAll('a[href^="/tag/"]').forEach((link) => {
+		element.querySelectorAll('a[href*="/tag/"]').forEach((link) => {
 			if (link.textContent.startsWith("#")) {
 				link.classList.add("hashtag-link");
 			}
 		});
 	});
 
-	if (window.location.pathname.startsWith("/p/")) {
-		document.querySelectorAll('.e-content a[href^="/tag/"]').forEach((link) => {
+	if (window.location.pathname.startsWith("/p/") || window.location.pathname.includes("/p/")) {
+		document.querySelectorAll('.e-content a[href*="/tag/"]').forEach((link) => {
 			if (link.textContent.startsWith("#")) {
 				link.classList.add("hashtag-link");
 			}

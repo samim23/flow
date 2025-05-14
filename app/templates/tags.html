@@ -58,7 +58,7 @@ function formatContent() {
     $(".content_main").each(function (index, element) {
         formatContentHeight(element);
         
-        $(element).find('a[href^="/tag/"]').filter(function() {
+        $(element).find('a[href*="/tag/"]').filter(function() {
             return $(this).text().startsWith('#');
         }).addClass('hashtag-link');
     });
