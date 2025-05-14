@@ -440,23 +440,34 @@ function loadPage() {
 	if (!loading && !scrollend) {
 		loading = true;
 
+		// Get site path prefix to construct correct URLs
+		const siteElement = document.getElementById('site');
+		let pathPrefix = '';
+		if (siteElement && siteElement.dataset.sitePathPrefix) {
+			pathPrefix = siteElement.dataset.sitePathPrefix;
+			// Remove trailing slash if present
+			if (pathPrefix.endsWith('/')) {
+				pathPrefix = pathPrefix.slice(0, -1);
+			}
+		}
+
 		// Build URL based on context
 		let url;
 		const urlParams = new URLSearchParams(window.location.search);
 
 		if (window.location.href.includes("/tag/")) {
 			const tag = window.location.pathname.split("/tag/")[1].replace("/", "");
-			url = `/archive/tag/${tag}_${currentPage}.html`;
+			url = `${pathPrefix}/archive/tag/${tag}_${currentPage}.html`;
 		} else if (window.location.href.includes("draft")) {
-			url = `/archive/draft/${currentPage}.html`;
-		} else if (window.location.pathname.startsWith("/search")) {
+			url = `${pathPrefix}/archive/draft/${currentPage}.html`;
+		} else if (window.location.pathname.startsWith("/search") || window.location.pathname.includes("/search")) {
 			// Handle search pages - preserve the search query
 			const searchQuery = urlParams.get("q");
-			url = `/archive/search/${currentPage}?q=${encodeURIComponent(
+			url = `${pathPrefix}/archive/search/${currentPage}?q=${encodeURIComponent(
 				searchQuery
 			)}`;
 		} else {
-			url = `/archive/${currentPage}.html`;
+			url = `${pathPrefix}/archive/${currentPage}.html`;
 		}
 
 		loadPageFromURL(url);
