@@ -251,11 +251,15 @@ function formatContentHeight(element) {
 					const thispagetitle = element.parentNode.querySelector(
 						".post_date_title .post_date"
 					).textContent;
-					_paq.push(["trackEvent", "postopen", thispage]);
-					const url = window.location.origin + thispage;
-					_paq.push(["setDocumentTitle", thispagetitle]);
-					_paq.push(["setCustomUrl", url]);
-					_paq.push(["trackPageView"]);
+					
+					// Only use analytics if _paq is defined
+					if (typeof _paq !== 'undefined') {
+						_paq.push(["trackEvent", "postopen", thispage]);
+						const url = window.location.origin + thispage;
+						_paq.push(["setDocumentTitle", thispagetitle]);
+						_paq.push(["setCustomUrl", url]);
+						_paq.push(["trackPageView"]);
+					}
 				}, duration);
 			};
 
@@ -363,12 +367,14 @@ async function loadPageFromURL(url) {
 		const html = await response.text();
 
 		if (html) {
-			// Analytics
-			_paq.push(["setDocumentTitle", url]);
-			_paq.push(["setCustomUrl", url]);
-			_paq.push(["setGenerationTimeMs", Date.now() - timeItTookToLoadPage]);
-			_paq.push(["enableLinkTracking"]);
-			_paq.push(["trackPageView"]);
+			// Analytics - only if _paq is defined
+			if (typeof _paq !== 'undefined') {
+				_paq.push(["setDocumentTitle", url]);
+				_paq.push(["setCustomUrl", url]);
+				_paq.push(["setGenerationTimeMs", Date.now() - timeItTookToLoadPage]);
+				_paq.push(["enableLinkTracking"]);
+				_paq.push(["trackPageView"]);
+			}
 
 			// Parse HTML and append content
 			const parser = new DOMParser();
@@ -578,8 +584,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Analytics setup
 function loadAnalyticsScript() {
+	// Get site path prefix
+	const siteElement = document.getElementById('site');
+	let pathPrefix = '';
+	if (siteElement && siteElement.dataset.sitePathPrefix) {
+		pathPrefix = siteElement.dataset.sitePathPrefix;
+		// Remove trailing slash if present
+		if (pathPrefix.endsWith('/')) {
+			pathPrefix = pathPrefix.slice(0, -1);
+		}
+	}
+
+	// Create global _paq array if not exists
+	window._paq = window._paq || [];
+	
 	const script = document.createElement("script");
-	script.src = "/static/js/analytics.js"; // Adjust the path based on your project structure
+	script.src = `${pathPrefix}/static/js/analytics.js`; // Include the path prefix
 	script.type = "text/javascript";
 	script.async = true;
 	document.head.appendChild(script);
