@@ -8,12 +8,6 @@ if (
 ) {
 	console.log("flow", window.location.href);
 } else {
-	_paq.push(["setDocumentTitle", document.title]);
-	_paq.push(["trackPageView"]);
-	_paq.push(["enableHeartBeatTimer"]);
-	_paq.push(["enableLinkTracking"]);
-
-	(function () {
-		// insert your analytics code here
+	// insert your analytics code here
 	})();
 }

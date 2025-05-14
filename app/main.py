@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from pathlib import Path
 import logging
 import asyncio
+import re
 
 from app.settings import settings
 from app.routes import router
@@ -22,7 +23,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Determine root_path for FastAPI based on settings.site_path_prefix
-cleaned_prefix = settings.site_path_prefix.strip('/')
+# First, ensure it's a string and sanitize any Windows paths
+raw_prefix = str(settings.site_path_prefix)
+# Strip any Windows-style drive letter and path (e.g., C:/Program Files/Git/)
+sanitized_prefix = re.sub(r'^[A-Za-z]:[/\\].*?(?=/|$)', '', raw_prefix)
+# Then process normally
+cleaned_prefix = sanitized_prefix.strip('/')
 root_path_for_fastapi = ('/' + cleaned_prefix) if cleaned_prefix else ''
 
 app = FastAPI(title=settings.site_name, root_path=root_path_for_fastapi)

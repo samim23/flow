@@ -17,6 +17,7 @@ import pickle
 from dataclasses import dataclass, field
 import time
 import json
+import re
 
 if TYPE_CHECKING:
     from .content import ContentManager, Page
@@ -117,7 +118,15 @@ class MockRequest:
         self.cleaned_site_url = settings.site_url.rstrip('/')
         
         # Clean site_path_prefix. Goal: '' or '/actual_prefix'
-        prefix = settings.site_path_prefix.strip('/')
+        # First, ensure it's a string
+        raw_prefix = str(settings.site_path_prefix)
+        
+        # Strip any Windows-style drive letter and path (e.g., C:/Program Files/Git/)
+        # This regex matches a drive letter followed by :/ and any path
+        sanitized_prefix = re.sub(r'^[A-Za-z]:[/\\].*?(?=/|$)', '', raw_prefix)
+        
+        # Then process normally
+        prefix = sanitized_prefix.strip('/')
         self.effective_site_prefix = ('/' + prefix) if prefix else ''
         
         # This is the base for constructing URLs, e.g., https://example.com or https://example.com/blog
