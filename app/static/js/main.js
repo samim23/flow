@@ -34,10 +34,16 @@ function truncate(string, len) {
 }
 
 function linkify(elContent) {
+	const siteElement = document.getElementById('site');
+	let sitePathPrefix = '';
+	if (siteElement && siteElement.dataset.sitePathPrefix) {
+		sitePathPrefix = siteElement.dataset.sitePathPrefix.replace(/\/$/, ''); // Remove trailing slash
+	}
+
 	return (elContent = linkifyHtml(elContent, {
 		nl2br: false, // optional
 		formatHref: {
-			hashtag: (href) => `/tag/${href.replace("#", "")}`,
+			hashtag: (href) => `${sitePathPrefix}/tag/${href.replace("#", "")}`,
 			mention: (val) => "https://twitter.com/" + val.substr(1),
 		},
 		validate: {

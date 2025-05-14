@@ -112,22 +112,37 @@ class BuildMetrics:
 class MockRequest:
     def __init__(self, settings):
         self.app = type('MockApp', (), {'state': type('MockState', (), {'settings': settings})()})
-        self.base_url = settings.site_url.rstrip('/')  # Remove trailing slash if present
+        self.settings = settings
+        # Clean site_url (no trailing slash)
+        self.cleaned_site_url = settings.site_url.rstrip('/')
+        
+        # Clean site_path_prefix. Goal: '' or '/actual_prefix'
+        prefix = settings.site_path_prefix.strip('/')
+        self.effective_site_prefix = ('/' + prefix) if prefix else ''
+        
+        # This is the base for constructing URLs, e.g., https://example.com or https://example.com/blog
+        self.base_url_with_prefix = f"{self.cleaned_site_url}{self.effective_site_prefix}"
 
     def url_for(self, name: str, **params) -> str:
         """Mock url_for to generate static URLs"""
+        
+        path_to_join: str # This will be the path part starting with a slash, like /rss.xml or /static/foo.css
+
         # Handle static files
         if name == "static":
-            path = params.get("path", "")
-            return f"{self.base_url}/static/{path}"
+            static_file_path = params.get("path", "")
+            path_to_join = f"/static/{static_file_path}"
+            # Example: base_url_with_prefix = "https://samim.io/blog", path_to_join = "/static/style.css"
+            # Result: "https://samim.io/blog/static/style.css"
+            return self.base_url_with_prefix + path_to_join
 
-        # Basic path mapping with base URL
+        # Basic path mapping (segments already start with / or are just /)
         path_mapping = {
             'index': '/',
-            'page': lambda params: f"/p/{params.get('path', '')}/",
-            'tag': lambda params: f"/tag/{params.get('tag', '')}/",
-            'archive': lambda params: f"/archive/{params.get('num', '0')}.html",
-            'archive_tag': lambda params: f"/archive/tag/{params.get('tag', '')}_{params.get('num', '0')}.html",
+            'page': lambda p: f"/p/{p.get('path', '')}/",
+            'tag': lambda p: f"/tag/{p.get('tag', '')}/",
+            'archive': lambda p: f"/archive/{p.get('num', '0')}.html",
+            'archive_tag': lambda p: f"/archive/tag/{p.get('tag', '')}_{p.get('num', '0')}.html",
             'feedrss': '/rss.xml',
             'sitemap': '/sitemap.xml',
             'tags': '/tag/',
@@ -136,13 +151,25 @@ class MockRequest:
 
         # Handle dynamic paths
         if name in path_mapping:
-            path = path_mapping[name]
-            if callable(path):
-                path = path(params)
-            # Add base URL for absolute paths
-            return f"{self.base_url}{path}"
+            path_template = path_mapping[name]
+            if callable(path_template):
+                path_to_join = path_template(params)
+            else:
+                path_to_join = path_template
+            
+            # Example: base_url_with_prefix = "https://samim.io/blog", path_to_join = "/rss.xml"
+            # Result: "https://samim.io/blog/rss.xml"
+            # Example: base_url_with_prefix = "https://samim.io/blog", path_to_join = "/"
+            # Result: "https://samim.io/blog/"
+            return self.base_url_with_prefix + path_to_join
 
-        return self.base_url + '/'
+        # Fallback: should point to the root of the prefixed site.
+        # self.base_url_with_prefix is 'https://domain.com' or 'https://domain.com/blog'
+        # Ensure it ends with a slash for the root.
+        if self.base_url_with_prefix.endswith('/'):
+            return self.base_url_with_prefix
+        else:
+            return self.base_url_with_prefix + '/'
 
 class StaticSiteGenerator:
     def __init__(self, templates_dir: str, output_dir: str, content_manager: "ContentManager", settings=None):

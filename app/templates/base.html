@@ -99,7 +99,7 @@
   {% if freeze==1 %}
   <div id="site">
   {%- else -%}
-  <div id="site" site="{{app.site_url}}" author="{{app.author}}" author_name="{{app.author_name}}" author_image="{{app.author_image}}">
+  <div id="site" site="{{app.site_url}}" data-site-path-prefix="{{ app.site_path_prefix }}" author="{{app.author}}" author_name="{{app.author_name}}" author_image="{{app.author_image}}">
   {%- endif %}
     <header id="top-container">
       <div id="site_logo">

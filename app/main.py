@@ -21,7 +21,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title=settings.site_name)
+# Determine root_path for FastAPI based on settings.site_path_prefix
+cleaned_prefix = settings.site_path_prefix.strip('/')
+root_path_for_fastapi = ('/' + cleaned_prefix) if cleaned_prefix else ''
+
+app = FastAPI(title=settings.site_name, root_path=root_path_for_fastapi)
 
 # Make sure required directories exist
 content_path = Path(settings.content_dir)

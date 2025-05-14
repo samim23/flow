@@ -128,6 +128,18 @@ custom_css_class: "text-serif"
 
 This class will be added to the `div` that wraps your post's content, which you can then target in your CSS files.
 
+### Subdirectory Deployment
+
+If you need to deploy this application in a subdirectory on your server (e.g., `https://yourdomain.com/blog/` instead of `https://yourdomain.com/`), you can use the `site_path_prefix` setting in your `.env` file (or `app/settings.py`).
+
+*   **`SITE_URL`**: Set this to your main domain, e.g., `SITE_URL="https://yourdomain.com"`.
+*   **`SITE_PATH_PREFIX`**: Set this to the subdirectory path, e.g., `SITE_PATH_PREFIX="/blog/"`. Ensure it starts and ends with a slash, or is just `/` if deploying at the root.
+
+The application will then correctly generate all URLs (for static assets, internal links, RSS feeds, etc.) to include this prefix.
+
+**Note for Live Server (FastAPI):**
+When running the live FastAPI server (e.g., via `python app/main.py`), the `root_path` for the FastAPI application is automatically configured based on `SITE_PATH_PREFIX`. This ensures that the live server also operates correctly from the specified subdirectory.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -139,3 +151,4 @@ MIT License - see [LICENSE](https://github.com/samim23/flow/blob/master/LICENSE.
 ---
 
 _Built by [samim](https://samim.io)_
+
