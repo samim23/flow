@@ -25,8 +25,14 @@ logger = logging.getLogger(__name__)
 # Determine root_path for FastAPI based on settings.site_path_prefix
 # First, ensure it's a string and sanitize any Windows paths
 raw_prefix = str(settings.site_path_prefix)
-# Strip any Windows-style drive letter and path (e.g., C:/Program Files/Git/)
+# Strip Windows path patterns
+# 1. Drive letters with paths (C:/Program Files/Git/...)
 sanitized_prefix = re.sub(r'^[A-Za-z]:[/\\].*?(?=/|$)', '', raw_prefix)
+# 2. Git paths (/Git/...)
+sanitized_prefix = re.sub(r'^/Git(/|$)', '/', sanitized_prefix)
+# 3. Git without leading slash
+sanitized_prefix = re.sub(r'^Git(/|$)', '/', sanitized_prefix)
+
 # Then process normally
 cleaned_prefix = sanitized_prefix.strip('/')
 root_path_for_fastapi = ('/' + cleaned_prefix) if cleaned_prefix else ''

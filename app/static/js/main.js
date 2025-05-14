@@ -38,6 +38,17 @@ function linkify(elContent) {
 	let sitePathPrefix = '';
 	if (siteElement && siteElement.dataset.sitePathPrefix) {
 		sitePathPrefix = siteElement.dataset.sitePathPrefix.replace(/\/$/, ''); // Remove trailing slash
+		
+		// Sanitize Windows paths
+		// 1. Remove drive letters and paths
+		sitePathPrefix = sitePathPrefix.replace(/^[A-Za-z]:([/\\].*)$/, '$1');
+		// 2. Remove Git paths
+		sitePathPrefix = sitePathPrefix.replace(/^[/\\]Git([/\\]|$)/, '/');
+		
+		// Ensure prefix starts with / if not empty
+		if (sitePathPrefix && !sitePathPrefix.startsWith('/')) {
+			sitePathPrefix = '/' + sitePathPrefix;
+		}
 	}
 
 	return (elContent = linkifyHtml(elContent, {
@@ -384,7 +395,7 @@ function makePostString(
 	title = title.replace(/\r\n|\n|\r/gm, ""); // remove double spaces
 	title = title.replace(/\s+/g, " "); // remove extra spaces
 	title = title.replace(/:/g, " -"); // replace colons
-	title = title.replace(/['"“”]/g, ""); // remove quotes
+	title = title.replace(/['"""]/g, ""); // remove quotes
 	title = title.trim() || "Untitled"; // Default to "Untitled" if empty
 
 	title = truncate(title, 70); // Trunacate title

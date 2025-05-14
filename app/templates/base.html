@@ -97,7 +97,7 @@
 </head>
 <body>
   {% if freeze==1 %}
-  <div id="site">
+  <div id="site" data-site-path-prefix="{{ app.site_path_prefix }}">
   {%- else -%}
   <div id="site" site="{{app.site_url}}" data-site-path-prefix="{{ app.site_path_prefix }}" author="{{app.author}}" author_name="{{app.author_name}}" author_image="{{app.author_image}}">
   {%- endif %}
@@ -115,7 +115,7 @@
         <div class="post_static">
           <a title="Tags" href="{{ request.url_for('tags') }}">tags</a>
         </div>
-        <div class="post_static"><a title="About" href="/p/about/">about</a></div>
+        <div class="post_static"><a title="About" href="{{ request.url_for('page', path='about') }}">about</a></div>
       </div>
       {%- else -%}
       <nav id="editor_tools">

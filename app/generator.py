@@ -121,9 +121,15 @@ class MockRequest:
         # First, ensure it's a string
         raw_prefix = str(settings.site_path_prefix)
         
-        # Strip any Windows-style drive letter and path (e.g., C:/Program Files/Git/)
-        # This regex matches a drive letter followed by :/ and any path
+        # Strip any Windows-style path patterns
+        # 1. Drive letters with paths (C:/Program Files/Git/...)
+        # 2. Git paths (/Git/...)
+        # First remove drive letter paths
         sanitized_prefix = re.sub(r'^[A-Za-z]:[/\\].*?(?=/|$)', '', raw_prefix)
+        # Then remove Git paths that might appear at the beginning
+        sanitized_prefix = re.sub(r'^/Git(/|$)', '/', sanitized_prefix)
+        # Also handle just 'Git' without a leading slash
+        sanitized_prefix = re.sub(r'^Git(/|$)', '/', sanitized_prefix)
         
         # Then process normally
         prefix = sanitized_prefix.strip('/')

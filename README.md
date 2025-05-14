@@ -140,6 +140,9 @@ The application will then correctly generate all URLs (for static assets, intern
 **Note for Live Server (FastAPI):**
 When running the live FastAPI server (e.g., via `python app/main.py`), the `root_path` for the FastAPI application is automatically configured based on `SITE_PATH_PREFIX`. This ensures that the live server also operates correctly from the specified subdirectory.
 
+**Important Note for Windows Users:**
+If you're using Windows, especially with Git Bash, be aware that `site_path_prefix` may sometimes be affected by your environment's path formatting. The application includes safeguards to prevent Windows-specific paths (like `C:/Program Files/Git/blog/`) from appearing in URLs. If you notice any paths like this in your generated HTML, please ensure your `.env` file uses simple, web-style paths like `/blog/` rather than Windows paths.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
