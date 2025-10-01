@@ -1718,10 +1718,10 @@ img.mfp-img {
   * Remove most spacing between table cells.
   */
 
- table {
+ /* table {
      border-collapse: collapse;
      border-spacing: 0;
- }
+ } */
 
 
 
@@ -1820,10 +1820,6 @@ img.mfp-img {
   outline:0 solid transparent
 }
 
-
-
-
-
-
-
-
+ul {
+  margin-bottom: 20px;
+}
