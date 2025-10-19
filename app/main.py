@@ -57,9 +57,12 @@ content_manager = ContentManager(settings.content_dir)
 @app.on_event("startup")
 async def startup_event():
     """Start file monitoring on app startup"""
-    # Start the file monitoring task
-    asyncio.create_task(content_manager.start_monitoring())
-    # logger.info("Started content file monitoring")
+    if settings.enable_file_monitoring:
+        # Start the file monitoring task
+        asyncio.create_task(content_manager.start_monitoring())
+        logger.info("Started content file monitoring")
+    else:
+        logger.info("File monitoring disabled")
 
 @app.on_event("shutdown")
 async def shutdown_event():

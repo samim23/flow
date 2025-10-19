@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # Server settings
     local_server_port: int = 2323
     local_server_debug: bool = True
+    enable_file_monitoring: bool = False  # Disabled by default to avoid watchdog issues
 
     # Authentication
     local_server_auth: bool = False
