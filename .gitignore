@@ -12,3 +12,4 @@ pages/
 .history/
 content/p/
 app/static/log.json
+*.rdb

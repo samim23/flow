@@ -322,6 +322,8 @@ class ContentManager:
             raise FileNotFoundError(f"Content directory not found: {self.content_dir}")
         
         self.pages: Dict[str, Page] = {}
+        self.page_mtimes: Dict[str, float] = {}  # Track file modification times
+        self.page_paths: Dict[str, Path] = {}  # Map page path to file path
         self.monitor = FileMonitor(self.content_dir)
         self.load_all_pages()
 
@@ -334,11 +336,15 @@ class ContentManager:
                     # Update/add file
                     page = Page.from_file(path)
                     self.pages[page.path] = page
+                    self.page_paths[page.path] = path
+                    self.page_mtimes[page.path] = path.stat().st_mtime
                 else:
                     # Remove file
                     page_path = path.stem
                     if page_path in self.pages:
                         del self.pages[page_path]
+                        self.page_paths.pop(page_path, None)
+                        self.page_mtimes.pop(page_path, None)
             except Exception as e:
                 logger.error(f"Error handling change in {file_path}: {e}")
 
@@ -359,13 +365,55 @@ class ContentManager:
             try:
                 page = Page.from_file(file_path)
                 self.pages[page.path] = page
-                # Note: Hash initialization is now handled by ContentFileHandler during monitoring
+                self.page_paths[page.path] = file_path
+                self.page_mtimes[page.path] = file_path.stat().st_mtime
             except Exception as e:
                 logger.error(f"Failed to load {file_path}: {str(e)}")
 
     def get_page(self, path: str) -> Optional[Page]:
-        """Get a specific page by path"""
-        return self.pages.get(path)
+        """Get a specific page by path, reloading if file was modified externally"""
+        # Check if page exists in cache
+        if path in self.pages:
+            file_path = self.page_paths.get(path)
+            if file_path and file_path.exists():
+                try:
+                    current_mtime = file_path.stat().st_mtime
+                    cached_mtime = self.page_mtimes.get(path, 0)
+                    
+                    # Reload if file was modified
+                    if current_mtime > cached_mtime:
+                        logger.debug(f"Reloading modified page: {path}")
+                        page = Page.from_file(file_path)
+                        self.pages[path] = page
+                        self.page_mtimes[path] = current_mtime
+                except Exception as e:
+                    logger.error(f"Error checking/reloading page {path}: {e}")
+            
+            return self.pages.get(path)
+        
+        # Page not in cache - try to find it on disk (new file created externally)
+        possible_paths = [
+            self.content_dir / f"{path}.md",
+            self.content_dir / path / "index.md",
+        ]
+        # Also search recursively for the file
+        for file_path in self.content_dir.glob(f"**/{path}.md"):
+            possible_paths.insert(0, file_path)
+            break
+        
+        for file_path in possible_paths:
+            if file_path.exists():
+                try:
+                    page = Page.from_file(file_path)
+                    self.pages[page.path] = page
+                    self.page_paths[page.path] = file_path
+                    self.page_mtimes[page.path] = file_path.stat().st_mtime
+                    logger.info(f"Loaded new page from disk: {path}")
+                    return page
+                except Exception as e:
+                    logger.error(f"Error loading new page {path}: {e}")
+        
+        return None
 
     def get_pages_by_status(self, status: str, username: Optional[str] = None) -> List[Page]:
         """Get all pages with a specific status"""
@@ -406,5 +454,8 @@ class ContentManager:
         # Save the file
         file_path.write_text(markdown)
 
-        # Reload the saved page
-        self.pages[path] = Page.from_file(file_path)
+        # Reload the saved page and update tracking
+        page = Page.from_file(file_path)
+        self.pages[path] = page
+        self.page_paths[path] = file_path
+        self.page_mtimes[path] = file_path.stat().st_mtime
