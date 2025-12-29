@@ -1052,6 +1052,9 @@ main {
 main > .content_divider:first-of-type {
   margin-top: 0;
 }
+#posts > .content_divider:first-of-type {
+  margin-top: 0;
+}
 
 /* .content_divider{
   content: "";

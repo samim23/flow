@@ -1067,8 +1067,11 @@ function showTagAutocomplete(editorElement, searchTerm) {
 	if (selection.rangeCount > 0) {
 		const range = selection.getRangeAt(0);
 		const rect = range.getBoundingClientRect();
-		autocomplete.style.left = rect.left + 'px';
-		autocomplete.style.top = (rect.bottom + 5) + 'px';
+		// Add scroll offset for correct positioning
+		const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+		const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+		autocomplete.style.left = (rect.left + scrollX) + 'px';
+		autocomplete.style.top = (rect.bottom + scrollY + 5) + 'px';
 	}
 
 	autocomplete.style.display = 'block';
@@ -1083,10 +1086,10 @@ function showTagAutocomplete(editorElement, searchTerm) {
 		});
 	});
 
-	// Handle click on suggestion
+	// Handle click on suggestion (use mousedown to prevent editor blur)
 	autocomplete.querySelectorAll('.tag-suggestion').forEach(el => {
-		el.addEventListener('click', function(e) {
-			e.preventDefault();
+		el.addEventListener('mousedown', function(e) {
+			e.preventDefault(); // Prevent editor from losing focus
 			e.stopPropagation();
 			const tagName = this.dataset.tag;
 			insertTagAtCursor(tagName, searchTerm);
