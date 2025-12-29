@@ -2,7 +2,7 @@
 
 from pydantic_settings import BaseSettings
 from pathlib import Path
-from typing import List, Set
+from typing import List, Set, Optional
 import re
 
 class Settings(BaseSettings):
@@ -22,16 +22,21 @@ class Settings(BaseSettings):
     author_name: str = "samim"
     author_image: str = "https://samim.io/static/upload/A8SKcX4t_400x400.jpg"
     author_twitter: str = "samim"
+    
+    # Newsletter (optional - set to enable newsletter badge in nav)
+    newsletter_url: str = "https://mailchi.mp/4804acffeb6e/samimio"  # e.g., "https://mailchi.mp/xxx/yourlist"
 
     # Server settings
     local_server_port: int = 2323
     local_server_debug: bool = True
     enable_file_monitoring: bool = False  # Disabled by default to avoid watchdog issues
+    
+    # Build settings
+    build_search_index: bool = True  # Auto-build Pagefind search index (requires Node.js)
 
-    # Authentication
-    local_server_auth: bool = False
-    local_server_auth_name: str = ""
-    local_server_auth_pass: str = ""
+    # Authentication (set admin_password to enable live mode with login)
+    admin_password: str = ""  # Leave empty for local dev mode, set for live server
+    session_secret: str = "change-this-secret-key-in-production"  # Used to sign session cookies
 
     # FTP settings
     server_ftp_enabled: bool = True

@@ -9,12 +9,16 @@
   <generator>flow</generator>
   <atom:link href="{{app.site_url}}/rss.xml" rel="self" type="application/rss+xml" />
   {% for page in pages %}
+  {%- set first_image = getFirstImage(page.html|default('', true)) -%}
   <item>
-    <title>{{page.title}}</title>
+    <title>{{page.title|default('Untitled', true)|e}}</title>
     <link>{{app.site_url}}/p/{{page.path}}/</link>
     <guid isPermaLink="true">{{app.site_url}}/p/{{page.path}}/</guid>
     <pubDate>{{ page.date.strftime('%a, %d %b %Y %T') }} {{local_timezone}}</pubDate>
-    <description></description>
+    <description><![CDATA[{{ cleanContent(page.html|default('', true))|safe }}]]></description>
+    {%- if first_image %}
+    <enclosure url="{{first_image}}" type="{{getImageMimeType(first_image)}}" length="0" />
+    {%- endif %}
   </item>
   {% endfor %}
 </channel>

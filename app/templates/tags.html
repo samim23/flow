@@ -15,7 +15,20 @@
 <div class="tags-cloud">
 {% with tags=tags %}
     {% for tag in tags %}
-    <a href="{{ request.url_for("tag", tag=tag[0]) }}" title="{{tag[0]}}" class="tag_container" data-tag-name="{{tag[0]}}">{{tag[0]}}<span class="tag_container_counter">{{tag[1]}}</span></a>
+    {# Determine tag tier based on count for subtle visual differentiation #}
+    {%- set count = tag[1] -%}
+    {%- if count >= 500 -%}
+        {%- set tier = 'tier-5' -%}
+    {%- elif count >= 200 -%}
+        {%- set tier = 'tier-4' -%}
+    {%- elif count >= 50 -%}
+        {%- set tier = 'tier-3' -%}
+    {%- elif count >= 10 -%}
+        {%- set tier = 'tier-2' -%}
+    {%- else -%}
+        {%- set tier = 'tier-1' -%}
+    {%- endif -%}
+    <a href="{{ request.url_for("tag", tag=tag[0]) }}" title="{{tag[0]}} ({{tag[1]}} posts)" class="tag_container {{tier}}" data-tag-name="{{tag[0]}}">{{tag[0]}}<span class="tag_container_counter">{{tag[1]}}</span></a>
     {% endfor %}
     <div class="content_divider"></div>
 {% endwith %}

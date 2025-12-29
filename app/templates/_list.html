@@ -3,23 +3,24 @@
       <li class="content_divider"></li>
     {%- endif -%}
     {%- for page in pages -%}
+      {%- if page -%}
       <li class="h-entry">
         <div class="post_meta">
-          {%- set authorname = page.meta.author -%}
+          {%- set authorname = page.meta.author|default('', true) -%}
           {%- if page.meta.author_name -%}
             {%- set authorname = page.meta.author_name -%}
           {%- endif -%}
           {%- if freeze==1 -%}
             <div class="p-author h-card post_user_icon" {%- if page.meta.icon %} style="background-image: url('{{page.meta.icon}}');"{% endif %}></div>
-            <h2 class="post_date_title"><a rel="bookmark" class="post_date" href="{{ request.url_for("page", path=page.path) }}">{{ page.title }}</a></h2>
-            <a class="post_date" href="{{ request.url_for("page", path=page.path) }}"><time class="dt-published" datetime="{{ page.date }}">{{ page.date }}</time></a>
+            <h2 class="post_date_title"><a rel="bookmark" class="post_date" href="{{ request.url_for("page", path=page.path|default('', true)) }}">{{ page.title|default('Untitled', true) }}</a></h2>
+            <a class="post_date" href="{{ request.url_for("page", path=page.path|default('', true)) }}"><time class="dt-published" datetime="{{ page.date|default('', true) }}">{{ page.date|default('', true) }}</time></a>
             {%- else -%}
            
             <div class="p-author h-card post_user_icon" {%- if page.meta.icon %} style="background-image: url('{{page.meta.icon}}');"{% endif %}></div>
-            <h2 class="post_date_title"><a rel="bookmark" class="post_date" href="{{ request.url_for("page", path=page.path) }}">{{ page.title }}</a></h2>
-            <a class="post_date" href="{{ request.url_for("page", path=page.path) }}"><time class="dt-published" datetime="{{ page.date }}">{{ page.date }}</time></a>
+            <h2 class="post_date_title"><a rel="bookmark" class="post_date" href="{{ request.url_for("page", path=page.path|default('', true)) }}">{{ page.title|default('Untitled', true) }}</a></h2>
+            <a class="post_date" href="{{ request.url_for("page", path=page.path|default('', true)) }}"><time class="dt-published" datetime="{{ page.date|default('', true) }}">{{ page.date|default('', true) }}</time></a>
             
-            <a href="{{page.path}}" data-jq-dropdown="#jq-dropdown-1" data-horizontal-offset="6" class="post_dropdown">...</a>
+            <a href="{{page.path|default('', true)}}" data-jq-dropdown="#jq-dropdown-1" data-horizontal-offset="6" class="post_dropdown">...</a>
           {%- endif -%}
         </div>
         {%- if page.html -%}
@@ -29,8 +30,9 @@
         {%- endif -%}
         <div class="content_divider"></div>
       </li>
+      {%- endif -%}
       {%- else -%}
-      <li class="h-entry"><br/>...<br/><br/></li>
+      <li class="h-entry"><br/>No posts found.<br/><br/></li>
     {%- endfor -%}
     </ul>
 

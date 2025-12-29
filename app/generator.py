@@ -11,9 +11,9 @@ from jinja2 import Environment, FileSystemLoader, FileSystemBytecodeCache
 from typing import TYPE_CHECKING, Dict, Any, List, Set
 import math
 from datetime import datetime
-from app.utils import clean_content, Paginator
+from app.utils import clean_content, extract_first_image, get_image_mime_type, Paginator
+from app.cache import get_cache, SQLiteCache
 import logging
-import pickle
 from dataclasses import dataclass, field
 import time
 import json
@@ -97,6 +97,63 @@ class BuildMetrics:
         with open(path, 'w') as f:
             json.dump(report, f, indent=2)
         return report
+    
+    def save_manifest(self, path: str = "cache/build_manifest.json", content_manager=None, settings=None):
+        """Save detailed build manifest for debugging and tracking"""
+        from pathlib import Path
+        import hashlib
+        
+        # Calculate build duration safely
+        if self.end_time and self.start_time:
+            duration = (self.end_time - self.start_time).total_seconds()
+        else:
+            duration = 0
+        
+        manifest = {
+            "generated_at": datetime.now().isoformat(),
+            "build_duration_seconds": duration,
+            "summary": {
+                "total_pages": self.total_pages,
+                "pages_generated": self.pages_generated,
+                "pages_cached": self.cached_files,
+                "errors": len(self.errors)
+            },
+            "source_files": {},
+            "generated_files": self.generated_files,
+            "template_hashes": {},
+            "errors": self.errors
+        }
+        
+        # Add source content hashes
+        if content_manager and hasattr(content_manager, 'pages'):
+            try:
+                for page_path, page in content_manager.pages.items():
+                    content_hash = hashlib.md5(page.content.encode()).hexdigest()[:8]
+                    manifest["source_files"][f"content/p/{page_path}.md"] = {
+                        "hash": content_hash,
+                        "title": page.metadata.title if page.metadata else "Unknown",
+                        "date": page.metadata.date.isoformat() if page.metadata and page.metadata.date else None,
+                        "status": page.metadata.status if page.metadata else "unknown"
+                    }
+            except Exception as e:
+                logger.warning(f"Error adding source files to manifest: {e}")
+        
+        # Add template hashes
+        if settings and hasattr(settings, 'templates_dir'):
+            try:
+                templates_dir = Path(settings.templates_dir)
+                if templates_dir.exists():
+                    for template_file in templates_dir.glob("*.html"):
+                        content = template_file.read_text()
+                        template_hash = hashlib.md5(content.encode()).hexdigest()[:8]
+                        manifest["template_hashes"][template_file.name] = template_hash
+            except Exception as e:
+                logger.warning(f"Error adding template hashes to manifest: {e}")
+        
+        with open(path, 'w') as f:
+            json.dump(manifest, f, indent=2)
+        
+        return manifest
 
     def log_progress(self, message: str):
         """Log progress message with timing"""
@@ -197,7 +254,6 @@ class StaticSiteGenerator:
         # Initialize cache directories
         self.cache_dir = Path("cache")
         self.cache_templates_dir = self.cache_dir / "templates"
-        self.cache_file = self.cache_dir / "filecache.pickle"
         
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.cache_templates_dir.mkdir(parents=True, exist_ok=True)
@@ -216,69 +272,45 @@ class StaticSiteGenerator:
         self._template_cache = {}
         self._rendered_content = {}  # Cache for rendered content
 
-        # Load file change cache (shared with FTP uploader)
-        self.file_cache = self._load_cache()
+        # Use SQLite cache (shared with FTP uploader)
+        self.cache = get_cache()
         self.metrics = BuildMetrics()
     
-    def _load_cache(self) -> dict:
-        try:
-            if self.cache_file.exists():
-                with open(self.cache_file, "rb") as f:
-                    try:
-                        cache = pickle.load(f)
-                        return cache
-                    except (pickle.PickleError, EOFError):
-                        logger.warning("Cache file corrupted, starting fresh")
-                        return {}
-        except Exception as e:
-            logger.error(f"Error loading cache: {e}")
-        return {}
-
     def _save_cache(self):
-        """Save file cache"""
-        try:
-            with open(self.cache_file, "wb") as f:
-                pickle.dump(self.file_cache, f, protocol=pickle.HIGHEST_PROTOCOL)
-        except Exception as e:
-            logger.error(f"Error saving cache: {e}")
+        """No-op: SQLite cache auto-saves on each operation"""
+        pass  # SQLite commits on each write
 
     def clear_cache_selectively(self, clear_tags=False, clear_archives=False, clear_tag_archives=False, clear_posts=False):
         """Selectively clear parts of the cache to force regeneration of specific content types"""
-        keys_to_remove = set()
+        total_cleared = 0
         
         if clear_tags:
             # Clear main tag pages and tag index
-            tag_keys = {k for k in self.file_cache if k.startswith('tag:')}
-            tag_index_keys = {k for k in self.file_cache if 'tag/index.html' in k}
-            keys_to_remove.update(tag_keys, tag_index_keys)
-            logger.info(f"Clearing {len(tag_keys)} tag page cache entries")
+            cleared = self.cache.delete_prefix('tag:')
+            logger.info(f"Clearing {cleared} tag page cache entries")
+            total_cleared += cleared
             
         if clear_archives:
             # Clear main archive pages
-            archive_keys = {k for k in self.file_cache if k.startswith('archive:') or '/archive/' in k}
-            keys_to_remove.update(archive_keys)
-            logger.info(f"Clearing {len(archive_keys)} archive page cache entries")
+            cleared = self.cache.delete_prefix('archive:')
+            logger.info(f"Clearing {cleared} archive page cache entries")
+            total_cleared += cleared
             
         if clear_tag_archives:
             # Clear tag archive pages
-            tag_archive_keys = {k for k in self.file_cache if k.startswith('tag_archives:') or '/archive/tag/' in k}
-            keys_to_remove.update(tag_archive_keys)
-            logger.info(f"Clearing {len(tag_archive_keys)} tag archive cache entries")
+            cleared = self.cache.delete_prefix('tag_archives:')
+            logger.info(f"Clearing {cleared} tag archive cache entries")
+            total_cleared += cleared
             
         if clear_posts:
             # Clear individual post pages
-            post_keys = {k for k in self.file_cache if k.startswith('build/p/')}
-            keys_to_remove.update(post_keys)
-            logger.info(f"Clearing {len(post_keys)} post page cache entries")
+            cleared = self.cache.delete_prefix('page.html:p/')
+            logger.info(f"Clearing {cleared} post page cache entries")
+            total_cleared += cleared
         
-        # Remove the selected keys from cache
-        for key in keys_to_remove:
-            self.file_cache.pop(key, None)
+        logger.info(f"Cleared {total_cleared} total cache entries")
         
-        logger.info(f"Cleared {len(keys_to_remove)} total cache entries")
-        self._save_cache()  # Save the updated cache
-        
-        return len(keys_to_remove)
+        return total_cleared
 
     def _get_file_hash(self, path: Path) -> str:
         """Calculate MD5 hash of file"""
@@ -311,7 +343,9 @@ class StaticSiteGenerator:
         context = {
             "request": self.mock_request,
             "app": self.settings,
-            "freeze": 1
+            "freeze": 1,
+            "is_live_mode": False,  # Static site generation is never live mode
+            "is_authenticated": False  # No auth context for static sites
         }
         
         if additional_context:
@@ -356,7 +390,7 @@ class StaticSiteGenerator:
             
             # Check if content has changed
             content_hash = hashlib.md5(str(context).encode()).hexdigest()
-            if cache_key in self.file_cache and self.file_cache[cache_key] == content_hash:
+            if cache_key in self.cache and self.cache.get(cache_key) == content_hash:
                 self.metrics.cached_files += 1
                 return
             
@@ -366,7 +400,7 @@ class StaticSiteGenerator:
             await self.write_file(output_path, output)
             
             # Update cache
-            self.file_cache[cache_key] = content_hash
+            self.cache.set(cache_key, content_hash)
             self.metrics.end_stage(f"page_{template_name}", stage_start)
             
         except Exception as e:
@@ -393,11 +427,11 @@ class StaticSiteGenerator:
                     file_hash = self._get_file_hash(src_path)
                     cache_key = f"static:{rel_path}"
                     # Skip if file content hasn't changed
-                    if cache_key in self.file_cache and self.file_cache[cache_key] == file_hash:
+                    if cache_key in self.cache and self.cache.get(cache_key) == file_hash:
                         continue
 
                     static_files.append((src_path, dst_path))
-                    self.file_cache[cache_key] = file_hash
+                    self.cache.set(cache_key, file_hash)
                     static_files_copied.append(str(rel_path))
                     self.metrics.static_files_copied += 1
 
@@ -442,7 +476,7 @@ class StaticSiteGenerator:
                 "metadata": page.metadata.dict()
             }, sort_keys=True, default=self._datetime_handler).encode()).hexdigest()
             
-            if cache_key in self.file_cache and self.file_cache[cache_key] == content_hash:
+            if cache_key in self.cache and self.cache.get(cache_key) == content_hash:
                 if output_file.exists():  # File exists and matches cache
                     self.metrics.cached_files += 1
                     return
@@ -455,7 +489,7 @@ class StaticSiteGenerator:
             await self.generate_page("page.html", output_file, context)
 
             # Update cache
-            self.file_cache[cache_key] = content_hash
+            self.cache.set(cache_key, content_hash)
             self.metrics.pages_generated += 1
             
         except Exception as e:
@@ -513,7 +547,7 @@ class StaticSiteGenerator:
             relative_path = f"tag/{tag}/index.html"
 
             # Check if regeneration is needed
-            if (content_hash == self.file_cache.get(cache_key) and 
+            if (content_hash == self.cache.get(cache_key) and 
                 tag_file.exists()):
                 return False
 
@@ -536,7 +570,7 @@ class StaticSiteGenerator:
             self.metrics.add_generated_file("tag_pages", relative_path)
             
             # Update cache
-            self.file_cache[cache_key] = content_hash
+            self.cache.set(cache_key, content_hash)
             return True
 
         except Exception as e:
@@ -560,8 +594,8 @@ class StaticSiteGenerator:
             cache_key = f"tag_archives:{tag}"
             
             # Get previous state
-            prev_hash = self.file_cache.get(cache_key)
-            prev_pages = self.file_cache.get(f"{cache_key}:pages", [])
+            prev_hash = self.cache.get(cache_key)
+            prev_pages = self.cache.get(f"{cache_key}:pages") or []
 
             if prev_hash == content_hash:
                 return 0
@@ -606,8 +640,8 @@ class StaticSiteGenerator:
                 await asyncio.gather(*archive_tasks)
                 
                 # Update cache with new state
-                self.file_cache[cache_key] = content_hash
-                self.file_cache[f"{cache_key}:pages"] = current_pages_data
+                self.cache.set(cache_key, content_hash)
+                self.cache.set(f"{cache_key}:pages", current_pages_data)
                 
                 return len(archive_tasks)
 
@@ -656,7 +690,7 @@ class StaticSiteGenerator:
             archive_cache_key = "site_archives"
 
             # Check if archives need full regeneration
-            if archive_cache_key in self.file_cache and self.file_cache[archive_cache_key] == archive_content_hash:
+            if archive_cache_key in self.cache and self.cache.get(archive_cache_key) == archive_content_hash:
                 # Check if all archive files exist
                 if all((archive_dir / f"{page_num}.html").exists() for page_num in range(paginator.total_pages)):
                     self.metrics.log_progress("All archive pages up to date")
@@ -673,7 +707,7 @@ class StaticSiteGenerator:
                     "metadata": page.metadata.dict()
                 }, sort_keys=True, default=self._datetime_handler).encode()).hexdigest()
                 
-                if cache_key not in self.file_cache or self.file_cache[cache_key] != content_hash:
+                if cache_key not in self.cache or self.cache.get(cache_key) != content_hash:
                     # Determine which archive pages contain this page
                     affected_archive_pages = set(
                         range(
@@ -721,7 +755,7 @@ class StaticSiteGenerator:
                 await asyncio.gather(*archive_tasks)
                 
             # Update cache
-            self.file_cache[archive_cache_key] = archive_content_hash
+            self.cache.set(archive_cache_key, archive_content_hash)
 
         except Exception as e:
             logger.error(f"Error generating archives: {e}")
@@ -733,10 +767,20 @@ class StaticSiteGenerator:
             # Get latest pages and ensure they're a list
             public_pages = list(self.content_manager.get_pages_by_status("public"))[:self.settings.site_feed_amount]
             
+            # Create wrappers that include site_url for RSS template
+            site_url = self.settings.site_url if self.settings else ""
+            def clean_content_with_url(html: str) -> str:
+                return clean_content(html, site_url)
+            
+            def get_first_image(html: str) -> str:
+                return extract_first_image(html, site_url)
+            
             context = self.get_template_context({
                 "pages": public_pages,
                 "pubdate": datetime.now(),
-                "cleanContent": clean_content,
+                "cleanContent": clean_content_with_url,
+                "getFirstImage": get_first_image,
+                "getImageMimeType": get_image_mime_type,
                 "local_timezone": "+0100"
             })
             
@@ -860,6 +904,53 @@ class StaticSiteGenerator:
             logger.error(f"Error generating tags overview: {e}")
             raise
 
+    async def _build_search_index(self):
+        """Build Pagefind search index for the static site"""
+        import shutil
+        import subprocess
+        
+        # Check if search index building is enabled
+        if self.settings and not getattr(self.settings, 'build_search_index', True):
+            logger.info("Search index building disabled in settings")
+            return
+        
+        # Check if npx is available
+        if not shutil.which('npx'):
+            logger.warning("npx not found - skipping search index build. Install Node.js for search functionality.")
+            return
+        
+        self.metrics.log_progress("Building search index with Pagefind...")
+        stage_start = self.metrics.start_stage("search_index")
+        
+        try:
+            result = await asyncio.to_thread(
+                subprocess.run,
+                [
+                    'npx', '-y', 'pagefind',
+                    '--site', str(self.output_dir),
+                    '--output-path', str(self.output_dir / 'static' / 'pagefind')
+                ],
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                # Extract stats from output
+                lines = result.stdout.strip().split('\n')
+                for line in lines:
+                    if 'Indexed' in line and 'pages' in line:
+                        self.metrics.log_progress(f"✓ Search index: {line.strip()}")
+                        break
+                else:
+                    self.metrics.log_progress("✓ Search index built successfully")
+            else:
+                logger.warning(f"Pagefind warning: {result.stderr}")
+                
+        except Exception as e:
+            logger.warning(f"Could not build search index: {e}")
+        finally:
+            self.metrics.end_stage("search_index", stage_start)
+
     async def generate_site(self):
         """Generate complete static site with optimizations"""
         try:
@@ -920,7 +1011,7 @@ class StaticSiteGenerator:
                     "metadata": page.metadata.dict()
                 }, sort_keys=True, default=self._datetime_handler).encode()).hexdigest()
                 
-                if cache_key not in self.file_cache or self.file_cache[cache_key] != content_hash:
+                if cache_key not in self.cache or self.cache.get(cache_key) != content_hash:
                     pages_to_generate.append(page)
 
             if pages_to_generate:
@@ -960,6 +1051,15 @@ class StaticSiteGenerator:
             self._save_cache()
             self.metrics.complete_build()
             report = self.metrics.save_report()
+            
+            # Save detailed build manifest
+            self.metrics.save_manifest(
+                content_manager=self.content_manager,
+                settings=self.settings
+            )
+            
+            # Build search index with Pagefind
+            await self._build_search_index()
             
             # Log final statistics
             stats_message = (

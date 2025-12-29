@@ -4,10 +4,9 @@ from ftplib import FTP
 from pathlib import Path
 import hashlib
 from typing import List, Tuple
-import pickle
-import shutil
 import os
 import logging
+from app.cache import get_cache
 
 
 logger = logging.getLogger(__name__)
@@ -18,23 +17,13 @@ class FTPUploader:
         # Use proper build path from settings
         self.build_dir = Path(settings.local_build_path)
         self.upload_dir = Path(settings.local_upload_path)
-        self.cache_dir = Path("cache")
-        self.cache_file = self.cache_dir / "filecache.pickle"
-        self.cache_dir.mkdir(exist_ok=True)
-        self.file_cache = self._load_cache()
+        # Use shared SQLite cache
+        self.cache = get_cache()
         # logger.debug(f"FTP Uploader initialized with build_dir: {self.build_dir}, upload_dir: {self.upload_dir}")
 
-    def _load_cache(self) -> dict:
-        """Load file cache from disk"""
-        if self.cache_file.exists():
-            with open(self.cache_file, "rb") as f:
-                return pickle.load(f)
-        return {}
-
     def _save_cache(self):
-        """Save file cache to disk"""
-        with open(self.cache_file, "wb") as f:
-            pickle.dump(self.file_cache, f)
+        """No-op: SQLite cache auto-saves on each operation"""
+        pass
 
     def _get_file_hash(self, path: Path) -> str:
         """Calculate MD5 hash of file"""
@@ -53,16 +42,18 @@ class FTPUploader:
             if path.is_file():
                 try:
                     file_hash = self._get_file_hash(path)
-                    if str(path) not in self.file_cache or self.file_cache[str(path)] != file_hash:
+                    cache_key = str(path)
+                    if cache_key not in self.cache or self.cache.get(cache_key) != file_hash:
                         changed_files.append(path)
-                        self.file_cache[str(path)] = file_hash
+                        self.cache.set(cache_key, file_hash)
                         logger.debug(f"Found changed file: {path}")
                 except Exception as e:
                     logger.error(f"Error hashing file {path}: {e}")
             elif path.is_dir():
-                if str(path) not in self.file_cache:
+                cache_key = str(path)
+                if cache_key not in self.cache:
                     changed_dirs.append(path)
-                    self.file_cache[str(path)] = "dir"
+                    self.cache.set(cache_key, "dir")
                     logger.debug(f"Found new directory: {path}")
 
         return changed_files, changed_dirs
@@ -188,21 +179,12 @@ class FTPUploader:
     
     def delete_build_files(self, path: str, affected_tags: set = None):
         """Mark files for regeneration without deleting them"""
-        # Create build directory reference
-        build_path = self.build_dir
-
         if affected_tags:
             # Just remove from cache so they'll be regenerated
             for tag in affected_tags:
-                cache_key = f"tag:{tag}"
-                if cache_key in self.file_cache:
-                    del self.file_cache[cache_key]
-                
+                self.cache.delete(f"tag:{tag}")
                 # Remove archive cache entries
-                archive_tag_prefix = f"tag_archives:{tag}"
-                keys_to_remove = [k for k in self.file_cache if k.startswith(archive_tag_prefix)]
-                for key in keys_to_remove:
-                    del self.file_cache[key]
+                self.cache.delete_prefix(f"tag_archives:{tag}")
 
         # Remove cache entries for general site files
         general_files = [
@@ -215,12 +197,7 @@ class FTPUploader:
         
         for file_path in general_files:
             if file_path:
-                cache_key = f"page.html:{file_path}"
-                if cache_key in self.file_cache:
-                    del self.file_cache[cache_key]
+                self.cache.delete(f"page.html:{file_path}")
                 
         # Clear archive cache entries
-        archive_prefix = "archive:"
-        keys_to_remove = [k for k in self.file_cache if k.startswith(archive_prefix)]
-        for key in keys_to_remove:
-            del self.file_cache[key]
+        self.cache.delete_prefix("archive:")

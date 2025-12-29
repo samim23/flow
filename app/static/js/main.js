@@ -10,6 +10,15 @@ var post_edit_id = "";
 var content_temp = "";
 var filename_maxlength = 55;
 var uploadsInProgress = 0;
+var cachedTags = null; // Cache for tag autocomplete
+var autosaveInterval = null;
+var AUTOSAVE_KEY = 'flow_draft_autosave';
+var AUTOSAVE_TIMESTAMP_KEY = 'flow_draft_timestamp';
+
+// Check if content contains blob URLs (indicates upload in progress)
+function contentHasBlobUrls(content) {
+	return /blob:/.test(content);
+}
 
 String.prototype.replaceAll = function (searchStr, replaceStr) {
 	var str = this;
@@ -109,6 +118,40 @@ function cleanContent(elContent) {
 	tempDom.find("a").removeAttr("class");
 	tempDom.find("img").removeAttr("data-gallery-initialized");
 	tempDom.find(".medium-insert-buttons").remove();
+	
+	// Clean flow-embed elements: keep only the URL attribute, remove rendered content
+	tempDom.find("flow-embed").each(function() {
+		var url = $(this).attr("url");
+		$(this).empty(); // Remove all inner content
+		$(this).removeAttr("data-initialized"); // Remove runtime attribute
+		$(this).removeAttr("data-cursor-ref"); // Remove cursor ref
+		$(this).attr("url", url); // Ensure URL is preserved
+	});
+	
+	// Remove any orphaned flow-embed card elements that ended up outside the tag
+	tempDom.find(".flow-embed-card, .flow-embed-card-inner, .flow-embed-loading, .flow-embed-error").remove();
+	tempDom.find(".flow-embed-image, .flow-embed-content, .flow-embed-meta, .flow-embed-domain, .flow-embed-title, .flow-embed-excerpt, .flow-embed-date").remove();
+	
+	// Remove orphaned empty anchor tags (leftover from flow-embed rendering)
+	tempDom.find("a").each(function() {
+		var linkText = $(this).text().trim();
+		var href = $(this).attr("href") || "";
+		// Remove if it's empty (just whitespace) or only contains flow-embed classes
+		if (linkText === "" || (href.includes("/p/") && linkText === "")) {
+			$(this).remove();
+		}
+	});
+	
+	// Remove data-cursor-ref attributes
+	tempDom.find("[data-cursor-ref]").removeAttr("data-cursor-ref");
+	
+	// Clean up empty paragraphs
+	tempDom.find("p").each(function() {
+		if ($(this).html().trim() === "" || $(this).html().trim() === "<br>") {
+			$(this).remove();
+		}
+	});
+	
 	return tempDom.html().trim();
 }
 
@@ -342,6 +385,7 @@ function editor_create(container, submit_btn) {
 				"orderedlist",
 			],
 		},
+		placeholder: false,
 		paste: {
 			forcePlainText: true,
 			cleanPastedHTML: false,
@@ -359,11 +403,19 @@ function editor_create(container, submit_btn) {
 
 		if (strip(elContent).length > 0) {
 			submit_btn.show();
+			$("#related_btn").show(); // Show related button when content exists
 			$(".note_publish").slideUp("fast"); // Ensure indicator is hidden
+			$("#editor_placeholder").hide(); // Hide placeholder when content exists
 		} else {
 			submit_btn.hide();
+			$("#related_btn").hide(); // Hide related button when empty
+			$("#editor_placeholder").show(); // Show placeholder when empty
 		}
 	});
+
+	// Setup tag autocomplete for this editor
+	setupTagAutocompleteForEditor(container);
+	
 	return editor_setup(container, editor);
 }
 
@@ -614,8 +666,181 @@ function contentHasBlobUrls(content) {
 	return /src="blob:[^"]+"/g.test(content);
 }
 
+// Draft Autosave Functions
+function saveDraft(editor) {
+	if (uploadsInProgress > 0) {
+		console.log('Skipping autosave - uploads in progress');
+		return false;
+	}
+	
+	try {
+		var elContent = editor.serialize()[Object.keys(editor.serialize())[0]].value;
+		
+		// Don't save empty content
+		if (strip(elContent).length === 0) {
+			return false;
+		}
+		
+		// Don't save if content has blob URLs (upload in progress)
+		if (contentHasBlobUrls(elContent)) {
+			console.log('Skipping autosave - blob URLs detected');
+			return false;
+		}
+		
+		localStorage.setItem(AUTOSAVE_KEY, elContent);
+		localStorage.setItem(AUTOSAVE_TIMESTAMP_KEY, Date.now().toString());
+		console.log('Draft autosaved at', new Date().toLocaleTimeString());
+		return true;
+	} catch (e) {
+		console.error('Autosave failed:', e);
+		return false;
+	}
+}
+
+function getDraft() {
+	try {
+		var content = localStorage.getItem(AUTOSAVE_KEY);
+		var timestamp = localStorage.getItem(AUTOSAVE_TIMESTAMP_KEY);
+		
+		if (content && timestamp) {
+			return {
+				content: content,
+				timestamp: parseInt(timestamp),
+				timeAgo: getRelativeTimeString(parseInt(timestamp))
+			};
+		}
+	} catch (e) {
+		console.error('Failed to get draft:', e);
+	}
+	return null;
+}
+
+function getRelativeTimeString(timestamp) {
+	var now = Date.now();
+	var diff = now - timestamp;
+	var seconds = Math.floor(diff / 1000);
+	var minutes = Math.floor(seconds / 60);
+	var hours = Math.floor(minutes / 60);
+	var days = Math.floor(hours / 24);
+	
+	if (seconds < 60) return 'just now';
+	if (minutes === 1) return 'a minute ago';
+	if (minutes < 60) return minutes + ' minutes ago';
+	if (hours === 1) return 'an hour ago';
+	if (hours < 24) return hours + ' hours ago';
+	if (days === 1) return 'yesterday';
+	return days + ' days ago';
+}
+
+function clearDraft() {
+	try {
+		localStorage.removeItem(AUTOSAVE_KEY);
+		localStorage.removeItem(AUTOSAVE_TIMESTAMP_KEY);
+		console.log('Draft cleared');
+	} catch (e) {
+		console.error('Failed to clear draft:', e);
+	}
+}
+
+function startAutosave(editor) {
+	// Clear any existing interval
+	if (autosaveInterval) {
+		clearInterval(autosaveInterval);
+	}
+	
+	// Autosave every 30 seconds
+	autosaveInterval = setInterval(function() {
+		saveDraft(editor);
+	}, 30000);
+	
+	// Also save on blur (when user leaves the editor)
+	$('.editable').on('blur', function() {
+		saveDraft(editor);
+	});
+}
+
+function stopAutosave() {
+	if (autosaveInterval) {
+		clearInterval(autosaveInterval);
+		autosaveInterval = null;
+	}
+}
+
+function showDraftRestorePrompt(draft, editor) {
+	var restoreDiv = $('<div/>', {
+		id: 'draft-restore-prompt',
+		css: {
+			background: '#fffce8',
+			border: '1px solid #f0e68c',
+			borderRadius: '8px',
+			padding: '12px 16px',
+			marginBottom: '12px',
+			display: 'flex',
+			justifyContent: 'space-between',
+			alignItems: 'center',
+			flexWrap: 'wrap',
+			gap: '10px'
+		}
+	});
+	
+	var textSpan = $('<span/>').html(
+		'<strong>📝 Draft found</strong> from ' + draft.timeAgo + 
+		'. <span style="color:#666;">(' + new Date(draft.timestamp).toLocaleString() + ')</span>'
+	);
+	
+	var buttonContainer = $('<div/>', { css: { display: 'flex', gap: '8px' } });
+	
+	var restoreBtn = $('<button/>', {
+		text: 'Restore',
+		css: {
+			background: '#2fbc5c',
+			color: 'white',
+			border: 'none',
+			padding: '6px 14px',
+			borderRadius: '4px',
+			cursor: 'pointer',
+			fontWeight: '600'
+		},
+		click: function() {
+			editor.setContent(draft.content);
+			$('#draft-restore-prompt').slideUp(function() { $(this).remove(); });
+			$('#submit_btn').show();
+		}
+	});
+	
+	var discardBtn = $('<button/>', {
+		text: 'Discard',
+		css: {
+			background: '#fff',
+			color: '#666',
+			border: '1px solid #ddd',
+			padding: '6px 14px',
+			borderRadius: '4px',
+			cursor: 'pointer'
+		},
+		click: function() {
+			clearDraft();
+			$('#draft-restore-prompt').slideUp(function() { $(this).remove(); });
+		}
+	});
+	
+	buttonContainer.append(restoreBtn, discardBtn);
+	restoreDiv.append(textSpan, buttonContainer);
+	
+	$('#edit_container').prepend(restoreDiv);
+}
+
 function newpost() {
 	var editor = editor_create($(".editable"), $("#submit_btn"));
+	
+	// Check for saved draft
+	var draft = getDraft();
+	if (draft) {
+		showDraftRestorePrompt(draft, editor);
+	}
+	
+	// Start autosave
+	startAutosave(editor);
 
 	// new post
 	$("#submit_btn").click(function (event) {
@@ -672,7 +897,9 @@ function newpost() {
 			data: { text: text, path: post_filename, unique: true },
 			type: "POST",
 			success: function (response) {
-				// console.log(response);
+				// Clear autosaved draft on successful post
+				clearDraft();
+				stopAutosave();
 				location.reload();
 			},
 			error: function (error) {
@@ -760,7 +987,7 @@ function setup() {
 	$("#search_form").submit(function (event) {
 		var text = $("#search_input").val();
 		event.preventDefault();
-		window.location.href = "/search/?q=" + text;
+		window.location.href = "/search/?q=" + encodeURIComponent(text);
 	});
 	// mark text when searching
 	if (window.location.href.indexOf("search") > -1) {
@@ -773,8 +1000,648 @@ function setup() {
 	}
 }
 
+// Tag Autocomplete functionality
+function initTagAutocomplete() {
+	// Create autocomplete container if it doesn't exist
+	if (!document.getElementById('tag-autocomplete')) {
+		const autocompleteDiv = document.createElement('div');
+		autocompleteDiv.id = 'tag-autocomplete';
+		autocompleteDiv.className = 'tag-autocomplete-container';
+		autocompleteDiv.style.cssText = `
+			display: none;
+			position: absolute;
+			background: white;
+			border: 1px solid #ddd;
+			border-radius: 8px;
+			box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+			max-height: 200px;
+			overflow-y: auto;
+			z-index: 10000;
+			min-width: 180px;
+		`;
+		document.body.appendChild(autocompleteDiv);
+	}
+
+	// Fetch tags if not cached
+	if (!cachedTags) {
+		fetch('/api/tags')
+			.then(response => response.json())
+			.then(tags => {
+				cachedTags = tags;
+			})
+			.catch(err => console.log('Could not load tags for autocomplete'));
+	}
+}
+
+function showTagAutocomplete(editorElement, searchTerm) {
+	const autocomplete = document.getElementById('tag-autocomplete');
+	if (!autocomplete || !cachedTags) return;
+
+	// Filter tags based on search term
+	const filtered = cachedTags.filter(tag => 
+		tag.name.toLowerCase().includes(searchTerm.toLowerCase())
+	).slice(0, 10); // Limit to 10 suggestions
+
+	if (filtered.length === 0) {
+		autocomplete.style.display = 'none';
+		return;
+	}
+
+	// Build suggestion HTML
+	autocomplete.innerHTML = filtered.map(tag => `
+		<div class="tag-suggestion" data-tag="${tag.name}" style="
+			padding: 10px 14px;
+			cursor: pointer;
+			border-bottom: 1px solid #f0f0f0;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		">
+			<span style="font-weight: 500;">#${tag.name}</span>
+			<span style="color: #999; font-size: 12px;">${tag.count} posts</span>
+		</div>
+	`).join('');
+
+	// Position autocomplete near cursor
+	const selection = window.getSelection();
+	if (selection.rangeCount > 0) {
+		const range = selection.getRangeAt(0);
+		const rect = range.getBoundingClientRect();
+		autocomplete.style.left = rect.left + 'px';
+		autocomplete.style.top = (rect.bottom + 5) + 'px';
+	}
+
+	autocomplete.style.display = 'block';
+
+	// Add hover effect
+	autocomplete.querySelectorAll('.tag-suggestion').forEach(el => {
+		el.addEventListener('mouseenter', function() {
+			this.style.backgroundColor = '#f5f5f5';
+		});
+		el.addEventListener('mouseleave', function() {
+			this.style.backgroundColor = 'white';
+		});
+	});
+
+	// Handle click on suggestion
+	autocomplete.querySelectorAll('.tag-suggestion').forEach(el => {
+		el.addEventListener('click', function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			const tagName = this.dataset.tag;
+			insertTagAtCursor(tagName, searchTerm);
+			autocomplete.style.display = 'none';
+		});
+	});
+}
+
+function insertTagAtCursor(tagName, searchTerm) {
+	const selection = window.getSelection();
+	if (selection.rangeCount > 0) {
+		const range = selection.getRangeAt(0);
+		
+		// Find and delete the partial hashtag the user typed
+		const textNode = range.startContainer;
+		if (textNode.nodeType === Node.TEXT_NODE) {
+			const text = textNode.textContent;
+			const cursorPos = range.startOffset;
+			
+			// Find the # before cursor
+			let hashPos = text.lastIndexOf('#', cursorPos - 1);
+			if (hashPos !== -1) {
+				// Replace from # to cursor with the complete tag
+				const before = text.substring(0, hashPos);
+				const after = text.substring(cursorPos);
+				textNode.textContent = before + '#' + tagName + ' ' + after;
+				
+				// Move cursor to end of inserted tag
+				const newPos = hashPos + tagName.length + 2; // +2 for # and space
+				range.setStart(textNode, newPos);
+				range.setEnd(textNode, newPos);
+				selection.removeAllRanges();
+				selection.addRange(range);
+			}
+		}
+	}
+}
+
+function hideTagAutocomplete() {
+	const autocomplete = document.getElementById('tag-autocomplete');
+	if (autocomplete) {
+		autocomplete.style.display = 'none';
+	}
+}
+
+function setupTagAutocompleteForEditor(editorElement) {
+	let currentHashtagSearch = '';
+	let isTypingHashtag = false;
+
+	$(editorElement).on('input', function(e) {
+		const selection = window.getSelection();
+		if (selection.rangeCount === 0) return;
+
+		const range = selection.getRangeAt(0);
+		const textNode = range.startContainer;
+		
+		if (textNode.nodeType !== Node.TEXT_NODE) {
+			hideTagAutocomplete();
+			return;
+		}
+
+		const text = textNode.textContent;
+		const cursorPos = range.startOffset;
+		
+		// Find if we're typing a hashtag (look backwards for #)
+		let hashPos = -1;
+		for (let i = cursorPos - 1; i >= 0; i--) {
+			if (text[i] === '#') {
+				hashPos = i;
+				break;
+			} else if (text[i] === ' ' || text[i] === '\n') {
+				break;
+			}
+		}
+
+		if (hashPos !== -1) {
+			const searchTerm = text.substring(hashPos + 1, cursorPos);
+			if (searchTerm.length >= 1) {
+				isTypingHashtag = true;
+				currentHashtagSearch = searchTerm;
+				showTagAutocomplete(editorElement, searchTerm);
+			} else {
+				hideTagAutocomplete();
+			}
+		} else {
+			isTypingHashtag = false;
+			hideTagAutocomplete();
+		}
+	});
+
+	// Hide autocomplete when clicking outside
+	$(document).on('click', function(e) {
+		if (!$(e.target).closest('#tag-autocomplete').length) {
+			hideTagAutocomplete();
+		}
+	});
+
+	// Handle keyboard navigation in autocomplete
+	$(editorElement).on('keydown', function(e) {
+		const autocomplete = document.getElementById('tag-autocomplete');
+		if (!autocomplete || autocomplete.style.display === 'none') return;
+
+		const suggestions = autocomplete.querySelectorAll('.tag-suggestion');
+		if (suggestions.length === 0) return;
+
+		let currentIndex = -1;
+		suggestions.forEach((el, i) => {
+			if (el.style.backgroundColor === 'rgb(245, 245, 245)') {
+				currentIndex = i;
+			}
+		});
+
+		if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			suggestions.forEach(el => el.style.backgroundColor = 'white');
+			const nextIndex = (currentIndex + 1) % suggestions.length;
+			suggestions[nextIndex].style.backgroundColor = '#f5f5f5';
+		} else if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			suggestions.forEach(el => el.style.backgroundColor = 'white');
+			const prevIndex = currentIndex <= 0 ? suggestions.length - 1 : currentIndex - 1;
+			suggestions[prevIndex].style.backgroundColor = '#f5f5f5';
+		} else if (e.key === 'Enter' || e.key === 'Tab') {
+			const selected = autocomplete.querySelector('.tag-suggestion[style*="rgb(245, 245, 245)"]');
+			if (selected) {
+				e.preventDefault();
+				const tagName = selected.dataset.tag;
+				insertTagAtCursor(tagName, currentHashtagSearch);
+				hideTagAutocomplete();
+			}
+		} else if (e.key === 'Escape') {
+			hideTagAutocomplete();
+		}
+	});
+}
+
+// ============================================
+// Related Posts Panel
+// ============================================
+
+// Common stop words to filter out when extracting keywords
+const STOP_WORDS = new Set([
+	'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
+	'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been', 'be', 'have', 'has', 'had',
+	'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must',
+	'shall', 'can', 'need', 'dare', 'ought', 'used', 'i', 'you', 'he', 'she', 'it',
+	'we', 'they', 'what', 'which', 'who', 'whom', 'this', 'that', 'these', 'those',
+	'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had',
+	'having', 'do', 'does', 'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if',
+	'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about',
+	'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above',
+	'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under',
+	'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how',
+	'all', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not',
+	'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just',
+	'don', 'should', 'now', 'd', 'll', 'm', 'o', 're', 've', 'y', 'ain', 'aren', 'couldn',
+	'didn', 'doesn', 'hadn', 'hasn', 'haven', 'isn', 'ma', 'mightn', 'mustn', 'needn',
+	'shan', 'shouldn', 'wasn', 'weren', 'won', 'wouldn', 'im', 'ive', 'id', 'youre',
+	'its', 'thats', 'whats', 'heres', 'theres', 'whos', 'lets', 'get', 'got', 'getting',
+	'going', 'go', 'goes', 'went', 'come', 'came', 'coming', 'make', 'made', 'making',
+	'see', 'saw', 'seen', 'seeing', 'know', 'knew', 'known', 'knowing', 'think', 'thought',
+	'thinking', 'take', 'took', 'taken', 'taking', 'want', 'wanted', 'wanting', 'use',
+	'using', 'find', 'found', 'finding', 'give', 'gave', 'given', 'giving', 'tell', 'told',
+	'telling', 'work', 'worked', 'working', 'seem', 'seemed', 'seeming', 'feel', 'felt',
+	'feeling', 'try', 'tried', 'trying', 'leave', 'left', 'leaving', 'call', 'called',
+	'calling', 'keep', 'kept', 'keeping', 'let', 'letting', 'begin', 'began', 'begun',
+	'beginning', 'show', 'showed', 'shown', 'showing', 'hear', 'heard', 'hearing', 'play',
+	'played', 'playing', 'run', 'ran', 'running', 'move', 'moved', 'moving', 'like',
+	'liked', 'liking', 'live', 'lived', 'living', 'believe', 'believed', 'believing',
+	'hold', 'held', 'holding', 'bring', 'brought', 'bringing', 'happen', 'happened',
+	'happening', 'write', 'wrote', 'written', 'writing', 'provide', 'provided', 'providing',
+	'sit', 'sat', 'sitting', 'stand', 'stood', 'standing', 'lose', 'lost', 'losing',
+	'pay', 'paid', 'paying', 'meet', 'met', 'meeting', 'include', 'included', 'including',
+	'continue', 'continued', 'continuing', 'set', 'setting', 'learn', 'learned', 'learning',
+	'change', 'changed', 'changing', 'lead', 'led', 'leading', 'understand', 'understood',
+	'understanding', 'watch', 'watched', 'watching', 'follow', 'followed', 'following',
+	'stop', 'stopped', 'stopping', 'create', 'created', 'creating', 'speak', 'spoke',
+	'spoken', 'speaking', 'read', 'reading', 'allow', 'allowed', 'allowing', 'add',
+	'added', 'adding', 'spend', 'spent', 'spending', 'grow', 'grew', 'grown', 'growing',
+	'open', 'opened', 'opening', 'walk', 'walked', 'walking', 'win', 'won', 'winning',
+	'offer', 'offered', 'offering', 'remember', 'remembered', 'remembering', 'love',
+	'loved', 'loving', 'consider', 'considered', 'considering', 'appear', 'appeared',
+	'appearing', 'buy', 'bought', 'buying', 'wait', 'waited', 'waiting', 'serve', 'served',
+	'serving', 'die', 'died', 'dying', 'send', 'sent', 'sending', 'expect', 'expected',
+	'expecting', 'build', 'built', 'building', 'stay', 'stayed', 'staying', 'fall', 'fell',
+	'fallen', 'falling', 'cut', 'cutting', 'reach', 'reached', 'reaching', 'kill', 'killed',
+	'killing', 'remain', 'remained', 'remaining', 'really', 'maybe', 'also', 'still', 'even',
+	'back', 'well', 'way', 'look', 'first', 'also', 'new', 'because', 'day', 'more', 'use',
+	'man', 'many', 'way', 'each', 'much', 'before', 'two', 'long', 'very', 'thing'
+]);
+
+function extractKeywordsAndTags(content) {
+	// Extract hashtags
+	const hashtagRegex = /#(\w+)/g;
+	const tags = [];
+	let match;
+	while ((match = hashtagRegex.exec(content)) !== null) {
+		tags.push(match[1].toLowerCase());
+	}
+	
+	// Remove HTML and extract text
+	const text = content
+		.replace(/<[^>]*>/g, ' ')  // Strip HTML
+		.replace(/https?:\/\/\S+/g, '')  // Strip URLs
+		.replace(/#\w+/g, '')  // Remove hashtags (already extracted)
+		.replace(/[^\w\s]/g, ' ')  // Remove punctuation
+		.toLowerCase();
+	
+	// Extract significant words
+	const words = text.split(/\s+/)
+		.filter(word => word.length > 3)  // Only words > 3 chars
+		.filter(word => !STOP_WORDS.has(word))  // Remove stop words
+		.filter(word => !/^\d+$/.test(word));  // Remove pure numbers
+	
+	// Count word frequency
+	const wordFreq = {};
+	words.forEach(word => {
+		wordFreq[word] = (wordFreq[word] || 0) + 1;
+	});
+	
+	// Sort by frequency and take top keywords
+	const keywords = Object.entries(wordFreq)
+		.sort((a, b) => b[1] - a[1])
+		.slice(0, 5)
+		.map(([word]) => word);
+	
+	return { keywords, tags: [...new Set(tags)] };  // Dedupe tags
+}
+
+let relatedPanelOpen = false;
+let currentRelatedOffset = 0;
+let isLoadingRelated = false;
+let currentQuery = '';
+let currentTags = '';
+
+function openRelatedPanel() {
+	const panel = document.getElementById('related_panel');
+	if (!panel) return;
+	
+	// Get editor content
+	const editorContent = $('#text_area').html() || '';
+	if (!editorContent.trim()) return;
+	
+	// Extract keywords and tags
+	const { keywords, tags } = extractKeywordsAndTags(editorContent);
+	currentQuery = keywords.join(' ');
+	currentTags = tags.join(',');
+	
+	// Reset state
+	currentRelatedOffset = 0;
+	relatedPanelOpen = true;
+	
+	// Show panel
+	panel.classList.remove('related-panel-hidden');
+	
+	// Load initial results
+	loadRelatedPosts(true);
+}
+
+function closeRelatedPanel() {
+	const panel = document.getElementById('related_panel');
+	if (panel) {
+		panel.classList.add('related-panel-hidden');
+	}
+	relatedPanelOpen = false;
+}
+
+function loadRelatedPosts(isInitial = false) {
+	if (isLoadingRelated) return;
+	
+	const resultsContainer = document.getElementById('related_results');
+	if (!resultsContainer) return;
+	
+	isLoadingRelated = true;
+	
+	if (isInitial) {
+		resultsContainer.innerHTML = '<div class="related-loading"><img src="/static/img/loading.gif" alt="Loading..." width="40" /></div>';
+	}
+	
+	// Build API URL
+	const params = new URLSearchParams();
+	if (currentQuery) params.set('q', currentQuery);
+	if (currentTags) params.set('tags', currentTags);
+	params.set('offset', currentRelatedOffset);
+	params.set('limit', 15);
+	
+	fetch('/api/related?' + params.toString())
+		.then(response => response.text())
+		.then(html => {
+			const tempDiv = document.createElement('div');
+			tempDiv.innerHTML = html;
+			
+			const content = tempDiv.querySelector('.related-posts-content');
+			if (!content) {
+				isLoadingRelated = false;
+				return;
+			}
+			
+			const hasMore = content.dataset.hasMore === 'true';
+			const nextOffset = parseInt(content.dataset.nextOffset) || 0;
+			const totalResults = parseInt(content.dataset.total) || 0;
+			
+			// Update count display
+			const countEl = document.getElementById('related_count');
+			if (countEl) {
+				countEl.textContent = totalResults > 0 ? `(${totalResults} found)` : '';
+			}
+			
+			if (isInitial) {
+				resultsContainer.innerHTML = content.innerHTML;
+			} else {
+				// Append new results
+				resultsContainer.insertAdjacentHTML('beforeend', content.innerHTML);
+				// Remove old "load more" button if exists
+				const oldLoadMore = resultsContainer.querySelector('.related-load-more');
+				if (oldLoadMore) oldLoadMore.remove();
+			}
+			
+			// Add load more button if there are more results
+			if (hasMore) {
+				currentRelatedOffset = nextOffset;
+				const loadMoreDiv = document.createElement('div');
+				loadMoreDiv.className = 'related-load-more';
+				loadMoreDiv.innerHTML = '<button class="related-load-more-btn">Load more posts...</button>';
+				loadMoreDiv.querySelector('button').addEventListener('click', () => loadRelatedPosts(false));
+				resultsContainer.appendChild(loadMoreDiv);
+			}
+			
+			// Setup insert buttons for new items
+			setupRelatedInsertButtons();
+			
+			// Format dates in the new content
+			if (typeof formatDate === 'function') {
+				formatDate();
+			}
+			
+			// Apply content height formatting
+			resultsContainer.querySelectorAll('.related-post-content').forEach(el => {
+				if (el.offsetHeight > 200) {
+					el.style.maxHeight = '200px';
+					el.style.overflow = 'hidden';
+				}
+			});
+			
+			isLoadingRelated = false;
+		})
+		.catch(err => {
+			console.error('Error loading related posts:', err);
+			if (isInitial) {
+				resultsContainer.innerHTML = '<div class="related-empty"><p>Error loading related posts.</p></div>';
+			}
+			isLoadingRelated = false;
+		});
+}
+
+function setupRelatedInsertButtons() {
+	document.querySelectorAll('.related-insert-btn').forEach(btn => {
+		if (btn.dataset.listenerAttached) return;
+		btn.dataset.listenerAttached = 'true';
+		
+		btn.addEventListener('click', function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			
+			const postItem = this.closest('.related-post-item');
+			if (!postItem) return;
+			
+			const url = postItem.dataset.url;
+			
+			// Create flow-embed element for quote card
+			const embedHtml = `<flow-embed url="${url}"></flow-embed>`;
+			
+			// Insert into editor
+			insertEmbedIntoEditor(embedHtml);
+			
+			// Visual feedback
+			const originalText = this.innerHTML;
+			this.innerHTML = '✓ Inserted';
+			this.style.background = '#28a54f';
+			setTimeout(() => {
+				this.innerHTML = originalText;
+				this.style.background = '';
+			}, 1500);
+		});
+	});
+}
+
+function insertLinkIntoEditor(link) {
+	const editor = document.getElementById('text_area');
+	if (!editor) return;
+	
+	// Focus the editor
+	editor.focus();
+	
+	// Insert at cursor position or at end
+	const selection = window.getSelection();
+	
+	if (selection.rangeCount > 0) {
+		const range = selection.getRangeAt(0);
+		
+		// Check if cursor is inside the editor
+		if (editor.contains(range.commonAncestorContainer)) {
+			// Insert at cursor
+			const textNode = document.createTextNode(' ' + link + ' ');
+			range.insertNode(textNode);
+			range.setStartAfter(textNode);
+			range.setEndAfter(textNode);
+			selection.removeAllRanges();
+			selection.addRange(range);
+		} else {
+			// Append to end
+			appendLinkToEditor(editor, link);
+		}
+	} else {
+		// Append to end
+		appendLinkToEditor(editor, link);
+	}
+	
+	// Trigger input event to update state
+	editor.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function insertEmbedIntoEditor(embedHtml) {
+	const editor = document.getElementById('text_area');
+	if (!editor) return;
+	
+	// Focus the editor
+	editor.focus();
+	
+	// Create a container for the embed
+	const container = document.createElement('div');
+	container.innerHTML = embedHtml;
+	const embedElement = container.firstChild;
+	
+	// We want to insert the embed as a block element
+	// Add a paragraph wrapper with the embed and a line break after
+	const wrapper = document.createElement('p');
+	wrapper.appendChild(embedElement);
+	
+	// Find where to insert
+	const selection = window.getSelection();
+	
+	if (selection.rangeCount > 0) {
+		const range = selection.getRangeAt(0);
+		
+		// Check if cursor is inside the editor
+		if (editor.contains(range.commonAncestorContainer)) {
+			// Insert after current paragraph
+			let currentP = range.commonAncestorContainer;
+			while (currentP && currentP.tagName !== 'P' && currentP !== editor) {
+				currentP = currentP.parentNode;
+			}
+			
+			if (currentP && currentP.tagName === 'P') {
+				currentP.parentNode.insertBefore(wrapper, currentP.nextSibling);
+			} else {
+				editor.appendChild(wrapper);
+			}
+		} else {
+			editor.appendChild(wrapper);
+		}
+	} else {
+		editor.appendChild(wrapper);
+	}
+	
+	// Add an empty paragraph after for continued typing
+	const newP = document.createElement('p');
+	newP.innerHTML = '<br>';
+	wrapper.parentNode.insertBefore(newP, wrapper.nextSibling);
+	
+	// Move cursor to the new paragraph
+	const newRange = document.createRange();
+	newRange.setStart(newP, 0);
+	newRange.collapse(true);
+	selection.removeAllRanges();
+	selection.addRange(newRange);
+	
+	// Trigger input event to update state
+	editor.dispatchEvent(new Event('input', { bubbles: true }));
+	
+	// Initialize the flow-embed rendering
+	if (typeof window.initFlowEmbeds === 'function') {
+		window.initFlowEmbeds();
+	}
+}
+
+function appendLinkToEditor(editor, link) {
+	// Find or create last paragraph
+	let lastP = editor.querySelector('p:last-of-type');
+	if (!lastP) {
+		lastP = document.createElement('p');
+		editor.appendChild(lastP);
+	}
+	
+	// Add a space and the link
+	if (lastP.textContent.trim()) {
+		lastP.appendChild(document.createTextNode(' '));
+	}
+	lastP.appendChild(document.createTextNode(link));
+}
+
+function initRelatedPanel() {
+	// Button click handler
+	const relatedBtn = document.getElementById('related_btn');
+	if (relatedBtn) {
+		relatedBtn.addEventListener('click', openRelatedPanel);
+	}
+	
+	// Close button handler
+	const closeBtn = document.getElementById('related_close');
+	if (closeBtn) {
+		closeBtn.addEventListener('click', closeRelatedPanel);
+	}
+	
+	// Keyboard shortcut: Cmd/Ctrl + Shift + R
+	document.addEventListener('keydown', function(e) {
+		if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'r') {
+			e.preventDefault();
+			if (relatedPanelOpen) {
+				closeRelatedPanel();
+			} else {
+				openRelatedPanel();
+			}
+		}
+		
+		// Escape to close
+		if (e.key === 'Escape' && relatedPanelOpen) {
+			closeRelatedPanel();
+		}
+	});
+	
+	// Infinite scroll in panel
+	const resultsContainer = document.getElementById('related_results');
+	if (resultsContainer) {
+		resultsContainer.addEventListener('scroll', function() {
+			if (isLoadingRelated) return;
+			
+			const scrollBottom = this.scrollTop + this.clientHeight;
+			const scrollHeight = this.scrollHeight;
+			
+			// Load more when near bottom
+			if (scrollHeight - scrollBottom < 200) {
+				const loadMoreBtn = this.querySelector('.related-load-more-btn');
+				if (loadMoreBtn) {
+					loadMoreBtn.click();
+				}
+			}
+		});
+	}
+}
+
 // run all
 $(function () {
+	initTagAutocomplete();
+	initRelatedPanel();
 	newpost();
 	editpost();
 	setup();

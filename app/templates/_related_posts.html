@@ -1,0 +1,46 @@
+{# Partial template for related posts in the side panel #}
+<div class="related-posts-content" 
+     data-has-more="{{ 'true' if has_more else 'false' }}" 
+     data-next-offset="{{ next_offset }}"
+     data-total="{{ total_results }}">
+    
+    {%- if pages|length == 0 and next_offset <= 15 -%}
+    <div class="related-empty">
+        <p>No related posts found.</p>
+        <p class="related-empty-hint">Try adding more content or hashtags to your draft.</p>
+    </div>
+    {%- endif -%}
+    
+    {%- for page in pages -%}
+    <div class="related-post-item" data-path="{{ page.path }}" data-title="{{ page.metadata.title|default('Untitled', true) }}" data-url="{{ app.site_url }}/p/{{ page.path }}/">
+        <div class="related-post-header">
+            <a class="related-post-date" href="{{ request.url_for('page', path=page.path|default('', true)) }}" target="_blank">
+                <time class="dt-published" datetime="{{ page.metadata.date|default('', true) }}">{{ page.metadata.date|default('', true) }}</time>
+            </a>
+            <button class="related-insert-btn" title="Insert link to this post">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                </svg>
+                Insert
+            </button>
+        </div>
+        {%- if page.metadata.title -%}
+        <h3 class="related-post-title">{{ page.metadata.title }}</h3>
+        {%- endif -%}
+        {%- if page.html -%}
+        <div class="related-post-content e-content content_main">
+            {{ page.html|safe }}
+        </div>
+        {%- endif -%}
+        {%- if page.metadata.tags -%}
+        <div class="related-post-tags">
+            {%- for tag in page.metadata.tags -%}
+            <span class="related-tag">#{{ tag }}</span>
+            {%- endfor -%}
+        </div>
+        {%- endif -%}
+    </div>
+    {%- endfor -%}
+</div>
+

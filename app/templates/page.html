@@ -1,39 +1,32 @@
 {% extends "base.html" -%} {% block content %}
 <div class="content_divider"></div>
+{% if page %}
 <div class="post h-entry">
 	<div class="post_meta">
-		{%- set authorname = page.meta.author -%} {%- if page.meta.author_name -%}
-		{%- set authorname = page.meta.author_name -%} {%- endif %} {%- if freeze==1
-		-%}
+		{%- set authorname = page.meta.author|default('', true) -%}
+		{%- if page.meta.author_name -%}
+		{%- set authorname = page.meta.author_name -%}
+		{%- endif -%}
+		{%- if freeze==1 -%}
 		<div
 			class="p-author h-card post_user_icon"
-			{%-
-			if
-			page.meta.icon
-			%}
+			{%- if page.meta.icon %}
 			style="background-image: url('{{page.meta.icon}}');"
-			{%
-			endif
-			%}
+			{% endif %}
 		></div>
-		<h2 class="post_date_title post_date">{{ page.title }}</h2>
-		<time class="dt-published" datetime="{{ page.date }}">{{ page.date }}</time>
+		<h2 class="post_date_title post_date">{{ page.title|default('Untitled', true) }}</h2>
+		<time class="dt-published" datetime="{{ page.date|default('', true) }}">{{ page.date|default('', true) }}</time>
 		{%- else -%}
 		<div
 			class="p-author h-card post_user_icon"
-			{%-
-			if
-			page.meta.icon
-			%}
+			{%- if page.meta.icon %}
 			style="background-image: url('{{page.meta.icon}}');"
-			{%
-			endif
-			%}
+			{% endif %}
 		></div>
-		<h2 class="post_date_title post_date">{{ page.title }}</h2>
-		<time class="dt-published" datetime="{{ page.date }}">{{ page.date }}</time>
+		<h2 class="post_date_title post_date">{{ page.title|default('Untitled', true) }}</h2>
+		<time class="dt-published" datetime="{{ page.date|default('', true) }}">{{ page.date|default('', true) }}</time>
 
-		{%- if page.meta.status=='private' -%}
+		{%- if page.meta.status and page.meta.status=='private' -%}
 		<span class="post_status">
 			<a href="/?status=private">
 				<img
@@ -41,13 +34,14 @@
 					width="10"
 					alt="{{page.meta.status}}"
 					title="{{page.meta.status}}"
+					loading="lazy"
 				/>
 			</a>
 		</span>
 		{%- endif %}
 
 		<a
-			href="{{page.path}}"
+			href="{{page.path|default('', true)}}"
 			data-jq-dropdown="#jq-dropdown-1"
 			data-horizontal-offset="6"
 			class="post_dropdown"
@@ -58,8 +52,15 @@
 	<div
 		class="e-content {% if page.meta.custom_css_class %}{{ page.meta.custom_css_class }}{% endif %}"
 	>
-		{{ page.html|safe }}
+		{{ page.html|default('', true)|safe }}
 	</div>
 </div>
+{% else %}
+<div class="post h-entry">
+	<div class="e-content">
+		<p>Page content not found.</p>
+	</div>
+</div>
+{% endif %}
 <div class="content_divider content_divider_post"></div>
 {% endblock content %}

@@ -192,6 +192,19 @@ function formatDate() {
 			const formatted = getRelativeTimeString(date);
 			dateElem.textContent = formatted;
 			dateElem.setAttribute("data-formatted", "true");
+			
+			// Add absolute date as title for hover tooltip
+			if (date) {
+				const dateObj = new Date(date);
+				const absoluteDate = dateObj.toLocaleString('en-US', {
+					year: 'numeric',
+					month: 'short',
+					day: 'numeric',
+					hour: '2-digit',
+					minute: '2-digit'
+				});
+				dateElem.setAttribute("title", absoluteDate);
+			}
 		});
 }
 
@@ -560,6 +573,44 @@ galleryStyles.textContent = `
 `;
 document.head.appendChild(galleryStyles);
 
+// Lazy load MathJax only when math content is detected
+function lazyLoadMathJax() {
+	// Check if page contains LaTeX math notation
+	const content = document.body.innerHTML;
+	const hasMath = /\\\(.*?\\\)|\\\[.*?\\\]|\$\$.*?\$\$|\$[^$]+\$/s.test(content);
+	
+	if (hasMath && !window.MathJax) {
+		console.log('Math content detected, loading MathJax...');
+		
+		// Configure MathJax before loading
+		window.MathJax = {
+			tex: {
+				inlineMath: [['\\(', '\\)'], ['$', '$']],
+				displayMath: [['\\[', '\\]'], ['$$', '$$']]
+			},
+			startup: {
+				ready: () => {
+					console.log('MathJax loaded and ready');
+					MathJax.startup.defaultReady();
+				}
+			}
+		};
+		
+		// Get site path prefix
+		const siteElement = document.getElementById('site');
+		let pathPrefix = '';
+		if (siteElement && siteElement.dataset.sitePathPrefix) {
+			pathPrefix = siteElement.dataset.sitePathPrefix.replace(/\/$/, '');
+		}
+		
+		// Load MathJax script
+		const script = document.createElement('script');
+		script.src = `${pathPrefix}/static/js/vendor/mathjax/es5/tex-mml-chtml.js`;
+		script.async = true;
+		document.head.appendChild(script);
+	}
+}
+
 // Initialize on DOM ready
 document.addEventListener("DOMContentLoaded", () => {
 	// Initialize gallery first
@@ -580,6 +631,9 @@ document.addEventListener("DOMContentLoaded", () => {
 	setTimeout(formatContent, 200);
 
 	initTagSearch();
+	
+	// Lazy load MathJax if needed
+	lazyLoadMathJax();
 });
 
 // Analytics setup
@@ -607,3 +661,122 @@ function loadAnalyticsScript() {
 
 // Call the function to load the analytics script
 loadAnalyticsScript();
+
+// ============================================
+// Flow Embed - Render <flow-embed> as quote cards
+// ============================================
+function initFlowEmbeds() {
+	const embeds = document.querySelectorAll('flow-embed:not([data-initialized])');
+	
+	embeds.forEach(embed => {
+		embed.setAttribute('data-initialized', 'true');
+		
+		const url = embed.getAttribute('url');
+		if (!url) {
+			embed.innerHTML = '<span class="flow-embed-error">Missing URL</span>';
+			return;
+		}
+		
+		// Show loading state
+		embed.innerHTML = '<div class="flow-embed-loading">Loading...</div>';
+		
+		// Fetch the page and extract content
+		fetchAndRenderEmbed(embed, url);
+	});
+}
+
+async function fetchAndRenderEmbed(embed, url) {
+	try {
+		// Extract the page path from URL for fetching
+		// URL might be full (https://samim.io/p/slug/) or relative (/p/slug/)
+		let fetchUrl = url;
+		
+		// If we're on localhost/dev, convert absolute URLs to relative for same-origin fetch
+		const currentOrigin = window.location.origin;
+		const urlObj = new URL(url, currentOrigin);
+		
+		// Extract just the path for fetching (works on any origin)
+		if (urlObj.pathname.startsWith('/p/')) {
+			fetchUrl = urlObj.pathname;
+		}
+		
+		const response = await fetch(fetchUrl);
+		
+		if (!response.ok) {
+			throw new Error(`Failed to fetch: ${response.status}`);
+		}
+		
+		const html = await response.text();
+		const parser = new DOMParser();
+		const doc = parser.parseFromString(html, 'text/html');
+		
+		// Extract content from the page
+		const entry = doc.querySelector('.h-entry');
+		const title = doc.querySelector('title')?.textContent?.trim() || 
+		              doc.querySelector('.post_date_title')?.textContent?.trim() ||
+		              'Untitled';
+		const dateElem = doc.querySelector('.dt-published');
+		const date = dateElem?.getAttribute('datetime') || '';
+		const formattedDate = date ? getRelativeTimeString(date) : '';
+		
+		// Get excerpt from content
+		const contentElem = doc.querySelector('.e-content');
+		let excerpt = '';
+		if (contentElem) {
+			// Strip HTML and get first ~140 chars
+			const textContent = contentElem.textContent?.trim() || '';
+			excerpt = textContent.substring(0, 140);
+			if (textContent.length > 140) excerpt += '...';
+		}
+		
+		// Get first image if available
+		const firstImage = doc.querySelector('.e-content img');
+		const imageUrl = firstImage?.src || '';
+		
+		// Get domain for display
+		const domain = new URL(url, window.location.origin).hostname;
+		
+		// Build the card HTML
+		const hasImage = imageUrl && !imageUrl.startsWith('data:');
+		const cardClass = hasImage ? 'flow-embed-card' : 'flow-embed-card no-image';
+		
+		embed.innerHTML = `
+			<a href="${url}" class="${cardClass}" target="_blank" rel="noopener">
+				<div class="flow-embed-card-inner">
+					${hasImage ? `
+						<div class="flow-embed-image">
+							<img src="${imageUrl}" alt="" loading="lazy">
+						</div>
+					` : ''}
+					<div class="flow-embed-content">
+						<div class="flow-embed-meta">
+							<span class="flow-embed-domain">${domain}</span>
+							${formattedDate ? `<span class="flow-embed-date">${formattedDate}</span>` : ''}
+						</div>
+						<div class="flow-embed-title">${escapeHtml(title)}</div>
+						${excerpt ? `<div class="flow-embed-excerpt">${escapeHtml(excerpt)}</div>` : ''}
+					</div>
+				</div>
+			</a>
+		`;
+		
+	} catch (error) {
+		console.error('Flow embed error:', error);
+		// Show error state with fallback link
+		embed.innerHTML = `<a href="${url}" class="flow-embed-error" target="_blank" rel="noopener">
+			⚠️ Could not load preview: ${url}
+		</a>`;
+	}
+}
+
+function escapeHtml(text) {
+	const div = document.createElement('div');
+	div.textContent = text;
+	return div.innerHTML;
+}
+
+// Run on page load and after dynamic content loads
+document.addEventListener('DOMContentLoaded', initFlowEmbeds);
+
+// Also expose globally so it can be called after content changes
+window.initFlowEmbeds = initFlowEmbeds;

@@ -21,6 +21,23 @@ import os
 
 logger = logging.getLogger(__name__)
 
+def add_lazy_loading(html: str) -> str:
+    """Add loading='lazy' attribute to all img tags that don't already have it."""
+    # Match img tags that don't already have loading attribute
+    def add_loading_attr(match):
+        img_tag = match.group(0)
+        # Skip if already has loading attribute
+        if 'loading=' in img_tag.lower():
+            return img_tag
+        # Add loading="lazy" before the closing > or />
+        if img_tag.endswith('/>'):
+            return img_tag[:-2] + ' loading="lazy" />'
+        elif img_tag.endswith('>'):
+            return img_tag[:-1] + ' loading="lazy">'
+        return img_tag
+    
+    return re.sub(r'<img\s[^>]*>', add_loading_attr, html, flags=re.IGNORECASE)
+
 # Helper function to preprocess Markdown content
 def preprocess_markdown(content: str) -> str:
     """
@@ -122,6 +139,9 @@ class Page(BaseModel):
             else:
                 # Treat content as raw HTML
                 processed_html = post.content
+            
+            # Add lazy loading to all images
+            processed_html = add_lazy_loading(processed_html)
             
             return cls(
                 metadata=metadata,

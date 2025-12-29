@@ -10,7 +10,7 @@
   {%- endif %}
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="author" content="{{app.author_name}}">
-  {%- if page and page.meta.tags %}
+  {%- if page and page.meta and page.meta.tags %}
   <meta name="keywords" content="{{page.meta.tags|join(', ')}}">
   {% endif -%}
   <meta name="theme-color" content="#ffffff">
@@ -20,7 +20,7 @@
   <meta property="og:description" content="{% if pageDescription %}{{pageDescription}}{% else %}{{app.site_description}}{% endif %}" />
   <meta property="og:type" content="{% if page %}article{% else %}website{% endif %}" />
   <meta property="og:url" content="{{app.site_url}}{% if page %}/p/{{page.path}}/{% endif %}" />
-  {%- if page and page.meta.image -%}
+  {%- if page and page.meta and page.meta.image -%}
   <meta property="og:image" content="{{page.meta.image}}" />
   {% endif %}
   <meta name="twitter:card" content="summary" />
@@ -39,7 +39,7 @@
   {%- endif %}
   <link rel=stylesheet type=text/css href="{{ request.url_for('static', path='css/style.css') }}">
   <link rel="preload" href="{{ request.url_for('static', path='js/client.js') }}" as="script">
-  <script src="{{ request.url_for('static', path='js/vendor/mathjax/es5/tex-mml-chtml.js') }}"></script>
+  <!-- MathJax is lazy-loaded only when math content is detected -->
   {%- if freeze==0 -%}
   <script src="{{ request.url_for('static', path='js/vendor/jquery-3.7.1.min.js') }}"> </script>
   <script src="{{ request.url_for('static', path='js/vendor/jquery.mark.min.js') }}"></script>
@@ -66,16 +66,16 @@
   {%- if isArchive == True -%}
   <meta name="robots" content="noindex, follow">
   {%- endif %}
-  {%- if page %}
+  {%- if page and page.date %}
   <script type="application/ld+json">{
     "@context": "https://schema.org",
     "@type": "BlogPosting",
-    "headline": "{{page.title}}",
+    "headline": "{{page.title|default('Untitled', true)}}",
     "datePublished": "{{page.date.isoformat()}}",
     "dateModified": "{{page.date.isoformat()}}",
     "author": {
       "@type": "Person",
-      "name": "{{page.meta.author_name}}",
+      "name": "{{page.meta.author_name|default(app.author_name, true)}}",
       "url": "{{app.site_url}}"
     },
     "publisher": {
@@ -85,11 +85,11 @@
         "@type": "ImageObject",
         "url": "{{app.author_image}}"
       }
-    }{% if page.meta.tags %},"keywords": "{{page.meta.tags|join(', ')}}"{% endif %},"url": "{{app.site_url}}/p/{{page.path}}/",
+    }{% if page.meta and page.meta.tags %},"keywords": "{{page.meta.tags|join(', ')}}"{% endif %},"url": "{{app.site_url}}/p/{{page.path|default('', true)}}/",
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": "{{app.site_url}}/p/{{page.path}}/"
-    }{% if page.meta.image %},"image": {
+      "@id": "{{app.site_url}}/p/{{page.path|default('', true)}}/"
+    }{% if page.meta and page.meta.image %},"image": {
       "@type": "ImageObject",
       "url": "{{page.meta.image}}"
     }{% endif %}
@@ -113,15 +113,47 @@
       {%- if freeze==1 -%}
       <div class="post_static_container">
         <div class="post_static">
+          {%- if is_live_mode -%}
+          <a title="Search" href="{{ request.url_for('search') }}">🔍</a>
+          {%- else -%}
+          <a title="Search" href="#" id="search-toggle">🔍</a>
+          {%- endif -%}
+        </div>
+        <div class="post_static">
           <a title="Tags" href="{{ request.url_for('tags') }}">tags</a>
         </div>
         <div class="post_static"><a title="About" href="{{ request.url_for('page', path='about') }}">about</a></div>
+        {%- if app.newsletter_url -%}
+        <div class="post_static"><a title="Subscribe to newsletter" href="{{ app.newsletter_url }}" target="_blank" rel="noopener" class="newsletter-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+            <polyline points="22,6 12,13 2,6"></polyline>
+          </svg>
+          <span>subscribe</span>
+        </a></div>
+        {%- endif -%}
+        {%- if is_live_mode and not is_authenticated -%}
+        <div class="post_static"><a title="Login to edit" href="{{ request.url_for('login') }}">login</a></div>
+        {%- endif -%}
       </div>
       {%- else -%}
       <nav id="editor_tools">
         <div class="post_static"><a title="search" href="{{ request.url_for('search') }}"><i class="fa fa-search"></i></a></div>
-        <div class="post_static" data-jq-dropdown="#jq-dropdown-publish" data-horizontal-offset="6" class="post_dropdown"><a title="publish" href="/">publish</a></div>
+        <div class="post_static" data-jq-dropdown="#jq-dropdown-publish" data-horizontal-offset="6" class="post_dropdown"><a title="Deploy to live site" href="/">⚡deploy</a></div>
         <div class="post_static"><a title="tag" href="{{ request.url_for('tags') }}">tag</a></div>
+        <div class="post_static"><a title="about" href="{{ request.url_for('page', path='about') }}">about</a></div>
+        {%- if app.newsletter_url -%}
+        <div class="post_static"><a title="Subscribe to newsletter" href="{{ app.newsletter_url }}" target="_blank" rel="noopener" class="newsletter-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+            <polyline points="22,6 12,13 2,6"></polyline>
+          </svg>
+          <span>subscribe</span>
+        </a></div>
+        {%- endif -%}
+        {%- if is_live_mode -%}
+        <div class="post_static"><a title="Logout" href="{{ request.url_for('logout') }}">logout</a></div>
+        {%- endif -%}
       </nav>
       {%- endif %}
     </header>
@@ -129,7 +161,7 @@
     <div class="note_publish"></div>
     <div id="jq-dropdown-publish" class="jq-dropdown jq-dropdown-tip jq-dropdown-relative jq-dropdown-anchor-right">
       <ul class="jq-dropdown-menu" style="padding:15px;">
-        <li><b>Publish to</b></li>
+        <li><b>Deploy to</b></li>
         <li style="margin-top:3px;margin-bottom:15px;"><small><a href="{{app.site_url}}" target="_blank">{{app.site_url}}</a></small></li>
         <li><a title="publish" href="/" id="btn_publish"><b>Publish</b></a></li>
       </ul>
@@ -141,6 +173,69 @@
         <li><a class="post_delete" title="Delete">🗑 Delete</a></li>
       </ul>
     </div>
+    {%- endif %}
+    {%- if freeze==1 -%}
+    <div id="search-container" style="display: none; padding: 15px 0; border-bottom: 2px solid #f1f1f1; margin-bottom: 15px;">
+      <div id="search"></div>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const searchToggle = document.getElementById('search-toggle');
+        const searchContainer = document.getElementById('search-container');
+        let pagefindLoaded = false;
+        let pagefindAvailable = true;
+        
+        // Get site path prefix for asset URLs
+        const siteEl = document.getElementById('site');
+        const pathPrefix = (siteEl && siteEl.dataset.sitePathPrefix) 
+          ? siteEl.dataset.sitePathPrefix.replace(/\/$/, '') 
+          : '';
+        
+        function loadPagefind() {
+          if (pagefindLoaded) return;
+          
+          // Load CSS
+          const css = document.createElement('link');
+          css.rel = 'stylesheet';
+          css.href = pathPrefix + '/static/pagefind/pagefind-ui.css';
+          document.head.appendChild(css);
+          
+          // Load JS
+          const script = document.createElement('script');
+          script.src = pathPrefix + '/static/pagefind/pagefind-ui.js';
+          script.onload = function() {
+            new PagefindUI({ 
+              element: "#search", 
+              showSubResults: true,
+              showImages: false,
+              excerptLength: 20
+            });
+            setTimeout(() => {
+              const input = searchContainer.querySelector('input');
+              if (input) input.focus();
+            }, 100);
+          };
+          script.onerror = function() {
+            pagefindAvailable = false;
+            searchContainer.innerHTML = '<p style="color: #999; padding: 20px;">Search index not built yet. Run: <code>python flow.py build-search-index</code></p>';
+          };
+          document.head.appendChild(script);
+          pagefindLoaded = true;
+        }
+        
+        if (searchToggle) {
+          searchToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (searchContainer.style.display === 'none') {
+              searchContainer.style.display = 'block';
+              loadPagefind();
+            } else {
+              searchContainer.style.display = 'none';
+            }
+          });
+        }
+      });
+    </script>
     {%- endif %}
     <main>
       {%- block content -%}

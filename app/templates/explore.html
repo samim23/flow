@@ -1,10 +1,13 @@
 {% extends "base.html" %} {% block content %}
-<script src="{{ request.url_for('static', path='js/vendor/Chart.min.js') }}"></script>
 <div class="explore_title_container">
 	<h2 class="page_title">explore</h2>
 	<div id="date_filter"></div>
 </div>
-<canvas id="myChart" width="400" height="250"></canvas>
+<div id="chart-loading" style="text-align: center; padding: 40px;">
+	<img src="{{ request.url_for('static', path='img/loading.gif') }}" alt="Loading chart..." width="40">
+	<p style="color: #999; margin-top: 10px;">Loading visualization...</p>
+</div>
+<canvas id="myChart" width="400" height="250" style="display: none;"></canvas>
 <h2>
 	<span id="postsdate">Click on date dots to explore posts</span>
 	<small id="postperyear" style="float: right"></small>
@@ -13,6 +16,20 @@
 <div id="posts"></div>
 
 <script>
+	// Lazy load Chart.js
+	(function() {
+		var script = document.createElement('script');
+		script.src = "{{ request.url_for('static', path='js/vendor/Chart.min.js') }}";
+		script.async = true;
+		script.onload = function() {
+			document.getElementById('chart-loading').style.display = 'none';
+			document.getElementById('myChart').style.display = 'block';
+			initExploreChart();
+		};
+		document.head.appendChild(script);
+	})();
+
+	function initExploreChart() {
 		var ctx = document.getElementById("myChart");
 		var labels = [];
 		var d = {{ stats | tojson }};
@@ -115,8 +132,12 @@
 		      data: finalPosts,
 		      borderWidth: 1.5,
 		      fill: true,
-		      pointRadius: 4.5,
+		      pointRadius: 6,
+		      pointHoverRadius: 10,
 		      pointBackgroundColor: "#DCEDC8",
+		      pointBorderColor: "#8BC34A",
+		      pointBorderWidth: 2,
+		      pointHitRadius: 20,  // Larger touch/click area
 		      lineTension: 0.3,
 		    },
 		  ],
@@ -128,13 +149,25 @@
 	  data: barChartData,
 	  options: {
 	    responsive: true,
+	    maintainAspectRatio: true,
+	    interaction: {
+	      mode: 'nearest',
+	      intersect: false,  // Easier to hit on mobile
+	      axis: 'x'
+	    },
 	    plugins: {
 	      legend: {
 	        display: false,
 	      },
+	      tooltip: {
+	        enabled: true,
+	        padding: 12,
+	        titleFont: { size: 14 },
+	        bodyFont: { size: 13 }
+	      }
 	    },
 	    onClick: (e) => {
-			var activePoints = window.chart.getElementsAtEventForMode(e, "nearest", { intersect: true }, true);
+			var activePoints = window.chart.getElementsAtEventForMode(e, "nearest", { intersect: false }, true);
 			if (activePoints.length) {
 				var selectedIndex = activePoints[0].index;
 				var postPerDay = allposts[selectedIndex];
@@ -200,6 +233,7 @@
 	    },
 	  },
 	});
+	}
 </script>
 
 {% endblock content %}

@@ -1,24 +1,42 @@
 {% extends "base.html" %} {% block content %}
-<div class="content_divider"></div>
-<form id="search_form">
-	<div class="settings_container" style="margin: 0px; margin-top: 6px">
+<div class="search-page">
+	<form id="search_form" class="search-form" method="get" action="{{ request.url_for('search') }}">
+		<div class="search-input-wrapper">
+			<svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<circle cx="11" cy="11" r="8"></circle>
+				<path d="m21 21-4.35-4.35"></path>
+			</svg>
 		<input
 			id="search_input"
-			placeholder="search term"
+			class="search-input"
+			placeholder="Search posts..."
 			type="text"
-			name="search"
+			name="q"
 			value="{{query}}"
+			autocomplete="off"
+			autofocus
 		/>
+			<button type="submit" class="search-button">
+				Search
+			</button>
+		</div>
+	</form>
+	
+	{% if query %}
+	<div class="search-results-header">
+		<span class="search-results-count">
+			{% if total_results == 0 %}
+				No results found for "{{query}}"
+			{% elif total_results == 1 %}
+				1 result for "{{query}}"
+			{% else %}
+				{{total_results}} results for "{{query}}"
+			{% endif %}
+		</span>
 	</div>
-	<button
-		style="position: absolute; margin-top: 6px; margin-left: 5px"
-		type="submit"
-		id="settings_search"
-	>
-		Search
-	</button>
-</form>
-<div class="content_divider" style="margin-top: 0px"></div>
+	{% endif %}
+</div>
+
 {% with pages=pages, showBanner=True, showFeed=False %} {% include "_list.html"
 %} {% endwith %}
 <p id="loading">

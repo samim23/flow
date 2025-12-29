@@ -1,7 +1,40 @@
 {% extends "base.html" %} {% block content %} {% if freeze<1 %}
 <div id="edit_container">
-	<div id="text_area" class="editable"></div>
-	<button id="submit_btn" type="button">Post</button>
+	<div id="editor_wrapper">
+		<div id="text_area" class="editable"></div>
+		<div id="editor_placeholder">What's on your mind?</div>
+	</div>
+	<div id="editor_buttons">
+		<button id="submit_btn" type="button">
+			<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<path d="M22 2L11 13"></path>
+				<path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+			</svg>
+			Post
+		</button>
+
+		<button id="related_btn" type="button" title="Find related posts (Cmd+Shift+R)">
+			<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+				<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+			</svg>
+			Related
+		</button>
+	</div>
+</div>
+
+<!-- Related Posts Side Panel -->
+<div id="related_panel" class="related-panel-hidden">
+	<div class="related-panel-header">
+		<h3>Related Posts</h3>
+		<span id="related_count"></span>
+		<button id="related_close" title="Close (Esc)">&times;</button>
+	</div>
+	<div id="related_results">
+		<div class="related-loading">
+			<img src="{{ request.url_for('static', path='img/loading.gif') }}" alt="Loading..." width="40" />
+		</div>
+	</div>
 </div>
 
 {% endif %} {% with pages=pages, showBanner=True, showFeed=False %} {% include

@@ -1,8 +1,7 @@
 # app/routes.py
 
-from fastapi import APIRouter, Request, Depends, HTTPException, BackgroundTasks
-from fastapi.responses import HTMLResponse, Response
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi import APIRouter, Request, HTTPException, BackgroundTasks
+from fastapi.responses import HTMLResponse, Response, RedirectResponse
 from fastapi import UploadFile, File
 from werkzeug.utils import secure_filename
 from typing import Optional, Dict, Any
@@ -15,15 +14,55 @@ import logging
 import ftplib
 import json
 import os
+import hashlib
+import hmac
 
 from app.settings import settings
-from app.utils import clean_content, Paginator
+from app.utils import clean_content, extract_first_image, get_image_mime_type, Paginator
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-security = HTTPBasic()
+
+# Session cookie name
+SESSION_COOKIE = "flow_session"
+
+def create_session_token() -> str:
+    """Create a signed session token"""
+    token = secrets.token_hex(16)
+    signature = hmac.new(
+        settings.session_secret.encode(),
+        token.encode(),
+        hashlib.sha256
+    ).hexdigest()[:16]
+    return f"{token}.{signature}"
+
+def verify_session_token(token: str) -> bool:
+    """Verify a session token signature"""
+    if not token or "." not in token:
+        return False
+    try:
+        token_part, signature = token.rsplit(".", 1)
+        expected_sig = hmac.new(
+            settings.session_secret.encode(),
+            token_part.encode(),
+            hashlib.sha256
+        ).hexdigest()[:16]
+        return hmac.compare_digest(signature, expected_sig)
+    except Exception:
+        return False
+
+def is_authenticated(request: Request) -> bool:
+    """Check if the current request has a valid session"""
+    if not settings.admin_password:
+        return True  # No password set = always authenticated (dev mode)
+    session_token = request.cookies.get(SESSION_COOKIE)
+    return verify_session_token(session_token)
+
+def is_live_mode() -> bool:
+    """Check if we're in live mode (password protection enabled)"""
+    return bool(settings.admin_password)
 
 def get_template_context(request: Request, context: Dict[str, Any] = None) -> Dict[str, Any]:
     """Get common template context"""
@@ -31,26 +70,75 @@ def get_template_context(request: Request, context: Dict[str, Any] = None) -> Di
     freeze = request.query_params.get('freeze', '0')
     freeze = int(freeze) if freeze.isdigit() else 0
     
+    # In live mode, force freeze=1 for unauthenticated users
+    authenticated = is_authenticated(request)
+    if is_live_mode() and not authenticated:
+        freeze = 1
+    
     base_context = {
         "request": request,
         "app": settings,
-        "freeze": freeze  # Use query param value
+        "freeze": freeze,
+        "is_authenticated": authenticated,
+        "is_live_mode": is_live_mode()
     }
     if context:
         base_context.update(context)
     return base_context
 
-def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
-    """Validate basic auth credentials"""
-    if not settings.local_server_auth:
-        return None
-        
-    correct_username = secrets.compare_digest(credentials.username, settings.local_server_auth_name)
-    correct_password = secrets.compare_digest(credentials.password, settings.local_server_auth_pass)
+# Login/Logout routes
+@router.get("/login", name="login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """Show login page"""
+    # If not in live mode, redirect to home
+    if not is_live_mode():
+        return RedirectResponse(url="/", status_code=302)
     
-    if not (correct_username and correct_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    return credentials.username
+    # If already authenticated, redirect to home
+    if is_authenticated(request):
+        return RedirectResponse(url="/", status_code=302)
+    
+    return request.app.state.templates.TemplateResponse(
+        "login.html",
+        {"request": request, "app": settings, "error": None}
+    )
+
+@router.post("/login", name="login_post")
+async def login_submit(request: Request):
+    """Handle login form submission"""
+    if not is_live_mode():
+        return RedirectResponse(url="/", status_code=302)
+    
+    form = await request.form()
+    password = form.get("password", "")
+    
+    # Verify password
+    if secrets.compare_digest(password, settings.admin_password):
+        # Create session and redirect
+        response = RedirectResponse(url="/", status_code=302)
+        session_token = create_session_token()
+        response.set_cookie(
+            key=SESSION_COOKIE,
+            value=session_token,
+            httponly=True,
+            samesite="lax",
+            max_age=60 * 60 * 24 * 7  # 7 days
+        )
+        return response
+    else:
+        # Invalid password
+        return request.app.state.templates.TemplateResponse(
+            "login.html",
+            {"request": request, "app": settings, "error": "Invalid password"},
+            status_code=401
+        )
+
+@router.get("/logout", name="logout")
+async def logout(request: Request):
+    """Log out and clear session"""
+    response = RedirectResponse(url="/", status_code=302)
+    response.delete_cookie(SESSION_COOKIE)
+    return response
 
 # Main routes
 @router.get("/", response_class=HTMLResponse)
@@ -207,7 +295,8 @@ async def archive_tag(request: Request, tag: str, num: str):
 @router.get("/search/", name="search", response_class=HTMLResponse)
 async def search(request: Request):
     """Search page"""
-    query = request.query_params.get('q', '').lower()
+    query_raw = request.query_params.get('q', '')
+    query = query_raw.lower()
     content_manager = request.app.state.content_manager
     
     if query:
@@ -221,12 +310,15 @@ async def search(request: Request):
         # Sort by date descending (newest first) like other routes
         pages.sort(key=lambda p: p.metadata.date, reverse=True)
         
+        total_results = len(pages)  # Store total BEFORE pagination
+        
         paginator = Paginator(pages, settings.site_scroll_amount)
         total_pages = paginator.total_pages - 1  # Convert to 0-based index
         
         context = {
             "pageTitle": f"{settings.site_name} - Search",
-            "query": query,
+            "query": query_raw,  # Preserve original case for display
+            "total_results": total_results,  # Total matching results
             "pages": paginator.get_page(total_pages),  # Get last page to show newest first
             "current_number": total_pages,  # Start from highest page number
             "total_num": total_pages
@@ -235,6 +327,7 @@ async def search(request: Request):
         context = {
             "pageTitle": f"{settings.site_name} - Search",
             "query": "",
+            "total_results": 0,
             "pages": [],
             "current_number": 0,
             "total_num": 0
@@ -290,8 +383,86 @@ async def search_archive(request: Request, num: int):
         get_template_context(request, context)
     )
 
+@router.get("/api/related", name="api_related", response_class=HTMLResponse)
+async def api_related(request: Request):
+    """API endpoint for finding related posts based on keywords and tags.
+    Returns rendered HTML fragments for the side panel.
+    
+    Query params:
+    - q: search keywords (space-separated)
+    - tags: comma-separated tag names
+    - offset: pagination offset (default 0)
+    - limit: number of results (default 15)
+    """
+    query = request.query_params.get('q', '').lower().strip()
+    tags_param = request.query_params.get('tags', '').strip()
+    offset = int(request.query_params.get('offset', 0))
+    limit = int(request.query_params.get('limit', 15))
+    
+    content_manager = request.app.state.content_manager
+    all_pages = content_manager.get_pages_by_status("public")
+    
+    # Score each page based on keyword and tag matches
+    scored_pages = []
+    keywords = [k.strip() for k in query.split() if k.strip() and len(k.strip()) > 2]
+    tags = [t.strip().lower() for t in tags_param.split(',') if t.strip()]
+    
+    for page in all_pages:
+        score = 0
+        
+        # Tag matches (high weight)
+        if tags and page.metadata.tags:
+            page_tags = [t.lower() for t in page.metadata.tags]
+            for tag in tags:
+                if tag in page_tags:
+                    score += 10  # Strong signal
+        
+        # Keyword matches in content and title
+        content_lower = page.content.lower()
+        title_lower = page.metadata.title.lower()
+        
+        for keyword in keywords:
+            if keyword in title_lower:
+                score += 5  # Title match is strong
+            if keyword in content_lower:
+                score += 2  # Content match
+        
+        # Boost recent posts slightly (within last 30 days)
+        if page.metadata.date:
+            days_old = (datetime.now() - page.metadata.date).days
+            if days_old < 30:
+                score += 1
+        
+        if score > 0:
+            scored_pages.append((score, page))
+    
+    # Sort by score descending, then by date descending
+    scored_pages.sort(key=lambda x: (-x[0], -x[1].metadata.date.timestamp() if x[1].metadata.date else 0))
+    
+    # Apply pagination
+    pages = [p for (_, p) in scored_pages[offset:offset + limit]]
+    has_more = len(scored_pages) > offset + limit
+    total_results = len(scored_pages)
+    
+    # Render the posts using a partial template
+    context = {
+        "pages": pages,
+        "has_more": has_more,
+        "total_results": total_results,
+        "next_offset": offset + limit,
+    }
+    
+    return request.app.state.templates.TemplateResponse(
+        "_related_posts.html",
+        get_template_context(request, context)
+    )
+
 @router.post("/post")
 async def post(request: Request):
+    # Require authentication in live mode
+    if is_live_mode() and not is_authenticated(request):
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
     form = await request.form()
     path = form['path']
     text = form['text']
@@ -348,8 +519,17 @@ async def feedrss(request: Request):
         key=lambda p: p.metadata.date
     )[:settings.site_feed_amount]
 
+    # Create wrappers that include site_url for RSS template
+    def clean_content_with_url(html: str) -> str:
+        return clean_content(html, settings.site_url)
+    
+    def get_first_image(html: str) -> str:
+        return extract_first_image(html, settings.site_url)
+    
     context = {
-        "cleanContent": clean_content,
+        "cleanContent": clean_content_with_url,
+        "getFirstImage": get_first_image,
+        "getImageMimeType": get_image_mime_type,
         "pages": latest,
         "local_timezone": "+0100",
         "pubdate": datetime.now()
@@ -403,11 +583,9 @@ def write_to_log(text: str):
 @router.post("/publish")
 async def publish_site(request: Request, background_tasks: BackgroundTasks):
     """Generate static site and upload to FTP"""
-    # Only check auth if it's enabled
-    if settings.local_server_auth:
-        credentials = await security(request)
-        if not credentials:
-            raise HTTPException(status_code=401)
+    # Require authentication in live mode
+    if is_live_mode() and not is_authenticated(request):
+        raise HTTPException(status_code=401, detail="Authentication required")
     
     logger.info("Starting site publication")
     write_to_log(json.dumps({"status": "publishing", "text": "Generating Site"}))
@@ -452,8 +630,12 @@ def allowed_file(filename: str) -> bool:
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @router.post("/upload")
-async def upload(file: UploadFile = File(...)):
+async def upload(request: Request, file: UploadFile = File(...)):
     """Handle file uploads"""
+    # Require authentication in live mode
+    if is_live_mode() and not is_authenticated(request):
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
     try:
         # Validate file
         if not file or not allowed_file(file.filename):
@@ -512,6 +694,10 @@ async def upload(file: UploadFile = File(...)):
 
 @router.post("/delete")
 async def delete(request: Request):
+    # Require authentication in live mode
+    if is_live_mode() and not is_authenticated(request):
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
     form = await request.form()
     path = form['path']
     content_manager = request.app.state.content_manager
@@ -527,6 +713,29 @@ async def delete(request: Request):
         return {"status": "OK", "path": str(file_path)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting file: {str(e)}")
+
+
+@router.get("/api/tags", name="api_tags")
+async def api_tags(request: Request):
+    """Get all tags with their counts for autocomplete"""
+    content_manager = request.app.state.content_manager
+    pages = content_manager.get_pages_by_status("public")
+    
+    # Collect tag statistics
+    tag_stats = {}
+    for page in pages:
+        if page.metadata.tags:
+            for tag in page.metadata.tags:
+                tag_stats[tag] = tag_stats.get(tag, 0) + 1
+    
+    # Convert to sorted list (most used first)
+    tags_list = sorted(
+        [{"name": tag, "count": count} for tag, count in tag_stats.items()],
+        key=lambda x: x["count"],
+        reverse=True
+    )
+    
+    return tags_list
 
 
 @router.get("/explore/", response_class=HTMLResponse)
@@ -568,11 +777,9 @@ async def explore(request: Request):
     context = {
         "stats": final_stat,
         "pageTitle": f"{settings.site_name} - Explore",
-        "app": settings,
-        "freeze": 1
     }
 
     return request.app.state.templates.TemplateResponse(
         "explore.html",
-        {"request": request, **context}
+        get_template_context(request, context)
     )

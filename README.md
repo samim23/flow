@@ -20,9 +20,12 @@ That's why I built Flow - a minimalist blogging engine that gets out of your way
 - 🖼️ **Image Management**: Drag-and-drop image uploads with gallery support
 - 🏷️ **Tagging**: Supports hashtag and tag page generation
 - 📱 **Mobile-First**: Responsive design that works seamlessly across devices
-- 🔍 **Full-Text Search**: Full-text search functionality in the admin interface
+- 🔍 **Full-Text Search**: Search across all posts, works on both editor and published site
 - 📊 **Content Explorer**: Visual timeline view of your content
+- 🔗 **Related Posts**: Discover and link to related content while writing
+- 📧 **Newsletter Integration**: Optional subscribe button with Mailchimp support
 - 📡 **FTP Integration**: One-click deployments to any host
+- 📰 **RSS with Images**: Full RSS feed support including image enclosures
 - 🔄 **Incremental Builds**: Only rebuilds what changed
 - 🎯 **Minimal Configuration**: Works out of the box with sensible defaults
 - 🎨 **Customizable**: Easy to modify templates and styling
@@ -57,9 +60,86 @@ python3 flow.py
 
 In your .env config set `server_ftp_enabled=true` and add your server infos.
 
+## Running as a Live Server
+
+Flow can run directly as a live web application instead of generating static files. This is useful if you want to skip the build/FTP workflow and just run Flow on your server.
+
+### Quick Setup
+
+1. Set an admin password in `app/settings.py`:
+
+```python
+admin_password: str = "your-secure-password"
+session_secret: str = "change-this-random-string"
+```
+
+2. Run with a production server:
+
+```bash
+pip install gunicorn uvicorn
+gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 app.main:app
+```
+
+3. Set up nginx as a reverse proxy (recommended):
+
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    
+    location /static {
+        alias /path/to/flow/app/static;
+    }
+    
+    location /upload {
+        alias /path/to/flow/upload;
+    }
+}
+```
+
+### How It Works
+
+- **No password set**: Editor is always accessible (local development mode)
+- **Password set**: Public users see read-only site, login required for editing
+- Visit `/login` to authenticate and access the editor
+- All write operations (post, upload, delete) require authentication
+
+### Note on Search
+
+In live mode, search uses server-side filtering instead of Pagefind. For the static site deployment, Pagefind provides faster client-side search.
+
 ## About Page Setup
 
 Create a post in the UI and then rename the file in your `/content/p/` folder to `about.md`
+
+## Newsletter Integration
+
+To add a "Subscribe" button to your navigation, set the `newsletter_url` in your settings:
+
+```python
+# In app/settings.py
+newsletter_url: str = "https://mailchi.mp/xxx/yourlist"
+```
+
+Leave empty or remove to hide the subscribe button. Works with any newsletter service (Mailchimp, Buttondown, etc.).
+
+## Related Posts & Backlinks
+
+While editing, click the **Related** button (or press `Cmd+Shift+R`) to open a sidebar showing posts related to your current draft. Click "Insert" to add a rich backlink.
+
+Backlinks use the `<flow-embed>` tag which renders as a Twitter-style quote card:
+
+```html
+<flow-embed url="https://yoursite.com/p/your-post/"></flow-embed>
+```
+
+The card content is fetched dynamically, so links always show fresh data.
 
 ## Cache Management
 
