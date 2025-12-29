@@ -16,6 +16,16 @@
 @font-face {
   font-family: 'SuisseIntl';
   src:
+    url('/static/fonts/Suisselntl/SuisseIntl-Light.woff2') format('woff2'),
+    url('/static/fonts/Suisselntl/SuisseIntl-Light.woff') format('woff');
+  font-weight: lighter;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'SuisseIntl';
+  src:
     url('/static/fonts/Suisselntl/SuisseIntl-Regular.woff2') format('woff2'),
     url('/static/fonts/Suisselntl/SuisseIntl-Regular.woff') format('woff');
   font-weight: normal;
@@ -28,20 +38,20 @@
   src:
     url('/static/fonts/Suisselntl/SuisseIntl-SemiBold.woff2') format('woff2'),
     url('/static/fonts/Suisselntl/SuisseIntl-SemiBold.woff') format('woff');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'SuisseIntlBold';
-  src:
-    url('/static/fonts/Suisselntl/SuisseIntl-Bold.woff2') format('woff2'),
-    url('/static/fonts/Suisselntl/SuisseIntl-Bold.woff') format('woff');
   font-weight: bold;
   font-style: normal;
   font-display: swap;
 }
+
+/* @font-face {
+  font-family: 'SuisseIntlBold';
+  src:
+    url('/static/fonts/Suisselntl/SuisseIntl-Black.woff2') format('woff2'),
+    url('/static/fonts/Suisselntl/SuisseIntl-Black.woff') format('woff');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+} */
 
 /* ==========================================================================
    General
@@ -60,7 +70,7 @@ body{
   font-size: 1rem;
   line-height: 1.7;
   text-align: left;
-  color: #2f2f2f;
+  color: #131313;
   background: #fff;
   margin: 0px;
   padding: 0 10px;
@@ -226,33 +236,15 @@ pre {
   justify-content: space-between;
   align-items: center;
   position: relative;
-  padding: 0.5rem 0rem;
+  padding-top: 1rem;
+  padding-bottom: 0.8rem;
 }
 #site_logo{
   flex-shrink: 0;
   display: flex;
-  font-size: 2.2em;
+  font-size: 35px;
   margin:0;
   padding: 0;
-  font-family:
-    'SuisseIntlBold',
-    ui-sans-serif,
-    -apple-system,
-    BlinkMacSystemFont,
-    system-ui,
-    Segoe UI,
-    Roboto,
-    Ubuntu,
-    Cantarell,
-    Noto Sans,
-    sans-serif,
-    "Helvetica Neue",
-    Helvetica,
-    Apple Color Emoji,
-    Arial,
-    sans-serif,
-    Segoe UI Emoji,
-    Segoe UI Symbol;
 }
 
 @media (max-width: 750px) {
@@ -262,26 +254,25 @@ pre {
 }
 
 #site_logo a{
-  /* color:rgba(13, 204, 108, 1); */
-  color: rgba(13, 204, 108, 1);
-  text-decoration: none;
-  text-decoration-thickness: 5px;
-  /* text-decoration-color: rgb(148, 255, 202); */
-  font-weight: 900;
+  color: rgb(0, 0, 0);
+  text-decoration: underline;
+  text-decoration-thickness: 16px;
+  text-decoration-color: rgba(13, 204, 108, 1);
+  font-weight: 900 !important;
 }
 #site_logo h1{
   font-size: 1em;
   margin: 0;
   line-height: 1;
+  font-weight: inherit;
 }
 #site_logo a:hover{
-  text-decoration: underline;
-  text-decoration-thickness: 5px;
+  color: rgba(13, 204, 108, 1);
 }
 
 #editor_tools, .post_static_container {
   display: flex;
-  gap: 1rem;
+  gap: 0rem;
   align-items: center;
   margin-top: 0;  /* Remove top margin */
 }
@@ -299,12 +290,31 @@ mark{
   right:0px;
 } */
 .post_static {
-  font-size: 20px;
+  font-size: 18px;
   margin: 0;  /* Remove all margins */
-  padding: 3px;
-  border-radius: 3px;
+  /* padding: 3px; */
+  /* border-radius: 3px; */
   display: flex;  /* Add flex display */
   align-items: center;  /* Center items vertically */
+}
+.post_static::before {
+  content: "/";
+  color: #000000;
+  margin-right: 0.8rem;
+  margin-left: 0.8rem;
+  font-weight: 400;
+}
+
+@media (max-width: 750px) {
+  .post_static::before {
+    margin-right: 0.2rem;
+    margin-left: 0.2rem;
+    content: "";
+  }
+}
+
+.post_static:first-child::before {
+  display: none;
 }
 .post_static[data-jq-dropdown="#jq-dropdown-publish"] {
   margin: 0;
@@ -312,8 +322,8 @@ mark{
 
 .post_static a{
   text-decoration: none;
-  color:#b3b3b3;
-  font-weight: 600;
+  color:#000000;
+  font-weight: 100 !important;
 }
 .post_static a:hover{
   color:#2fbc5c;
@@ -357,8 +367,8 @@ mark{
   gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 1rem;
-  border-top: 2px solid #F1F1F1;
-  border-bottom: 2px solid #F1F1F1;
+  border-top: 1px solid #000000;
+  border-bottom: 1px solid #000000;
 }
 
 .tags-stats {
@@ -409,7 +419,7 @@ mark{
   /* background-color: #cef7db; */
   font-weight: 600;
   border: 1px solid #d4d4d4;
-  color: #2fbc5c;
+  color: #000000;
   white-space:nowrap; 
 }
 
@@ -488,30 +498,11 @@ mark{
 
 
 .page_title{
-  font-family:
-    'SuisseIntlBold',
-    ui-sans-serif,
-    -apple-system,
-    BlinkMacSystemFont,
-    system-ui,
-    Segoe UI,
-    Roboto,
-    Ubuntu,
-    Cantarell,
-    Noto Sans,
-    sans-serif,
-    "Helvetica Neue",
-    Helvetica,
-    Apple Color Emoji,
-    Arial,
-    sans-serif,
-    Segoe UI Emoji,
-    Segoe UI Symbol;
-  font-size: 2em;
+  font-size: 28px;
   margin-top: 14px;
   margin-bottom: 14px;
   line-height: 1em;
-  font-weight: 600;
+  font-weight: bold;
 }
 .page_title:first-letter {
   text-transform: uppercase;
@@ -637,7 +628,6 @@ mark{
   gap: 8px;
   align-items: center;
   margin-top: 6px;
-  margin-bottom: 10px;
 }
 #submit_btn{
   display: none;
@@ -1048,12 +1038,19 @@ mark{
 }
 
 .content_divider{
-  background-color: #F1F1F1;
-  height: 2px;
+  background-color: #131313;
+  height: 1px;
   border: 0;
   margin:0px;
   margin-bottom:7px;
   margin-top: 7px;
+}
+main {
+  margin: 0;
+  padding: 0;
+}
+main > .content_divider:first-of-type {
+  margin-top: 0;
 }
 
 /* .content_divider{
@@ -1114,17 +1111,17 @@ mark{
 }
 
 .editable {
-  min-height: 40px;
   padding: 4px;
-  padding-top: 4px;
-  padding-bottom: 0px;
+  padding-top: 15px;
+  padding-bottom: 15px;
   -webkit-transition: all 0.20s ease-in-out;
   -moz-transition: all 0.20s ease-in-out;
   -ms-transition: all 0.20s ease-in-out;
   -o-transition: all 0.20s ease-in-out;
   outline: none;
   border-radius: 4px;
-  box-shadow: 0 0 0.1em 0em rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 0.1em 0em rgba(0, 0, 0, 1);
+
   margin-bottom: 4px;
   position: relative;
   /* Subtle dashed border when showing placeholder */
@@ -1137,7 +1134,7 @@ mark{
 /* Custom placeholder overlay - positioned over .editable */
 #editor_placeholder {
   position: absolute;
-  top: 8px;
+  top: 18px;
   left: 8px;
   color: #b0b0b0;
   font-style: italic;
@@ -1145,7 +1142,7 @@ mark{
   z-index: 1;
 }
 .editable:focus {
-  box-shadow: 0 0 0.1em 0.0em rgba(119, 181, 222, 0.2);
+  box-shadow: 0 0 0.1em 0.0em rgba(119, 181, 222, 0.4);
 }
 #edit_container{
   margin-top: 0px;
@@ -1252,7 +1249,10 @@ mark{
   }
 }
 
-
+.search_icon {
+  font-size: 14px; 
+  margin-right: 4px;
+}  
 
 /* ==========================================================================
    Magnific Popup CSS
@@ -1395,7 +1395,7 @@ button::-moz-focus-inner {
   color: #FFF;
   font-style: normal;
   font-size: 28px;
-  font-family: Arial, Baskerville, monospace; }
+  font-family: 'SuisseIntl', Arial, Baskerville, monospace; }
   .mfp-close:hover,
   .mfp-close:focus {
     opacity: 1; }
@@ -2420,12 +2420,8 @@ flow-embed {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 5px;
   background: transparent;
-  border: 1px solid #d6d6d6;
   border-radius: 5px;
-  font-size: 13px;
-  font-weight: 600;
   transition: color 0.15s ease;
 }
 .newsletter-btn:hover {
