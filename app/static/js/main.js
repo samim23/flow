@@ -429,20 +429,35 @@ function makePostString(
 	icon,
 	elContent
 ) {
-	// Ensure title sanitization is left unchanged
-	let title = elContent.trim(); // Original sanitization logic follows
+	// Check if post is image-only (for better fallback title)
+	const hasImage = /<img|<figure/.test(elContent);
+	const textContent = elContent.replace(/<[^>]*>?/gm, "").trim();
+	
+	// Ensure title sanitization
+	let title = elContent.trim();
 	title = title.replace(/<[^>]*>?/gm, ""); // strip HTML
 	title = title.replace(/(?:https?|ftp):\/\/[\n\S]+/g, ""); // strip links
-	title = title.replace(/\#/g, ""); // remove hashtags symbol
+	title = title.replace(/#\w+/g, ""); // remove entire hashtags (not just # symbol)
 	title = title.replace(/\n\s*\n/g, "\n"); // replace multi line breaks with single
 	title = title.replace(/\n/g, ". "); // replace line breaks with dot
-	title = title.replace(/\r\n|\n|\r/gm, ""); // remove double spaces
+	title = title.replace(/\r\n|\n|\r/gm, ""); // remove line breaks
 	title = title.replace(/\s+/g, " "); // remove extra spaces
 	title = title.replace(/:/g, " -"); // replace colons
 	title = title.replace(/['"""]/g, ""); // remove quotes
-	title = title.trim() || "Untitled"; // Default to "Untitled" if empty
+	title = title.replace(/\.+/g, "."); // collapse multiple dots
+	title = title.replace(/^\.\s*/, ""); // remove leading dots
+	title = title.trim();
+	
+	// Smart fallback for empty titles
+	if (!title) {
+		if (hasImage) {
+			title = "Image";
+		} else {
+			title = "Untitled";
+		}
+	}
 
-	title = truncate(title, 70); // Trunacate title
+	title = truncate(title, 70); // Truncate title
 
 	// Ensure post_date is valid
 	post_date = post_date || new Date().toISOString(); // Fallback to current date
