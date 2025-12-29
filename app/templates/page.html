@@ -62,5 +62,9 @@
 	</div>
 </div>
 {% endif %}
-<div class="content_divider content_divider_post"></div>
+
+{# Content Discovery Section - rendered by JavaScript #}
+{%- if page -%}
+<div id="content-discovery" class="content-discovery" data-current-path="{{ page.path }}"></div>
+{%- endif -%}
 {% endblock content %}

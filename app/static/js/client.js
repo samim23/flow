@@ -780,3 +780,246 @@ document.addEventListener('DOMContentLoaded', initFlowEmbeds);
 
 // Also expose globally so it can be called after content changes
 window.initFlowEmbeds = initFlowEmbeds;
+
+// ============================================
+// Content Discovery - "More in [Tag]" + "Top Stories"
+// ============================================
+function initContentDiscovery() {
+	const discoveryContainer = document.getElementById('content-discovery');
+	if (!discoveryContainer) return;
+	
+	const currentPath = discoveryContainer.dataset.currentPath;
+	
+	// Extract tags from JSON-LD on the page
+	const jsonLdScript = document.querySelector('script[type="application/ld+json"]');
+	let tags = [];
+	if (jsonLdScript) {
+		try {
+			const jsonLd = JSON.parse(jsonLdScript.textContent);
+			if (jsonLd.keywords) {
+				tags = jsonLd.keywords.split(', ').filter(t => t.trim());
+			}
+		} catch (e) {
+			console.error('Failed to parse JSON-LD:', e);
+		}
+	}
+	
+	// Fetch RSS for top stories first
+	const rssPromise = fetch('/rss.xml')
+		.then(r => r.ok ? r.text() : null)
+		.then(xml => xml ? parseRSS(xml, currentPath) : [])
+		.catch(() => []);
+	
+	// Fetch tag pages with pagination support
+	const tagsToFetch = tags.slice(0, 3);
+	const tagPostsPromise = fetchTagPostsWithPagination(tagsToFetch, currentPath, 6);
+	
+	Promise.all([rssPromise, tagPostsPromise]).then(([topStories, tagPosts]) => {
+		// Build mixed "More in Tags" section
+		const mixedPosts = getMixedTagPosts(tagPosts, 6);
+		
+		// Render the discovery section
+		renderDiscovery(discoveryContainer, tags, mixedPosts, topStories);
+	});
+}
+
+// Fetch posts from tag pages, auto-paginating until we have enough
+async function fetchTagPostsWithPagination(tags, excludePath, minPostsPerTag) {
+	const tagPosts = new Map();
+	
+	for (const tag of tags) {
+		const posts = [];
+		const seenHrefs = new Set();
+		let page = -1; // -1 means main tag page, 0+ means archive pages
+		const maxPages = 3; // Don't fetch more than 3 pages per tag
+		
+		while (posts.length < minPostsPerTag && page < maxPages) {
+			let url;
+			if (page === -1) {
+				url = `/tag/${encodeURIComponent(tag)}/`;
+			} else {
+				url = `/archive/tag/${encodeURIComponent(tag)}_${page}.html`;
+			}
+			
+			try {
+				const response = await fetch(url);
+				if (!response.ok) break;
+				
+				const html = await response.text();
+				const pagePosts = parseTagPage(html, excludePath);
+				
+				// Add unique posts
+				let addedAny = false;
+				for (const post of pagePosts) {
+					if (!seenHrefs.has(post.href)) {
+						seenHrefs.add(post.href);
+						posts.push(post);
+						addedAny = true;
+					}
+				}
+				
+				// If no new posts found, stop pagination
+				if (!addedAny && page >= 0) break;
+				
+			} catch (e) {
+				break;
+			}
+			
+			page++;
+		}
+		
+		if (posts.length > 0) {
+			tagPosts.set(tag, posts);
+		}
+	}
+	
+	return tagPosts;
+}
+
+function parseTagPage(html, excludePath) {
+	const parser = new DOMParser();
+	const doc = parser.parseFromString(html, 'text/html');
+	const posts = [];
+	
+	doc.querySelectorAll('.h-entry').forEach(entry => {
+		const titleLink = entry.querySelector('.post_date_title a');
+		const dateElem = entry.querySelector('.dt-published');
+		const contentElem = entry.querySelector('.e-content');
+		const firstImg = entry.querySelector('.e-content img');
+		
+		if (!titleLink) return;
+		
+		const href = titleLink.getAttribute('href');
+		// Skip current post
+		if (href && href.includes(excludePath)) return;
+		
+		const title = titleLink.textContent?.trim() || 'Untitled';
+		const date = dateElem?.getAttribute('datetime') || '';
+		const imageUrl = firstImg?.src || '';
+		
+		posts.push({ title, href, date, imageUrl });
+	});
+	
+	return posts;
+}
+
+function parseRSS(xml, excludePath) {
+	const parser = new DOMParser();
+	const doc = parser.parseFromString(xml, 'text/xml');
+	const posts = [];
+	
+	doc.querySelectorAll('item').forEach(item => {
+		const title = item.querySelector('title')?.textContent || 'Untitled';
+		const link = item.querySelector('link')?.textContent || '';
+		const pubDate = item.querySelector('pubDate')?.textContent || '';
+		
+		// Skip current post
+		if (link && link.includes(excludePath)) return;
+		
+		posts.push({ 
+			title, 
+			href: link, 
+			date: pubDate ? new Date(pubDate).toISOString() : ''
+		});
+	});
+	
+	return posts.slice(0, 6); // Top 6 stories
+}
+
+function getMixedTagPosts(tagPosts, maxPosts) {
+	const mixed = [];
+	const usedHrefs = new Set();
+	
+	// Round-robin through tags to get a nice mix
+	let hasMore = true;
+	let index = 0;
+	const tagsList = Array.from(tagPosts.entries());
+	
+	while (mixed.length < maxPosts && hasMore) {
+		hasMore = false;
+		for (const [tag, posts] of tagsList) {
+			if (index < posts.length && mixed.length < maxPosts) {
+				const post = posts[index];
+				if (!usedHrefs.has(post.href)) {
+					usedHrefs.add(post.href);
+					mixed.push({ ...post, tag });
+					hasMore = true;
+				}
+			}
+		}
+		index++;
+	}
+	
+	return mixed;
+}
+
+function renderDiscovery(container, tags, tagPosts, topStories) {
+	// If nothing to show, hide container
+	if (tagPosts.length === 0 && topStories.length === 0) {
+		container.style.display = 'none';
+		return;
+	}
+	
+	let html = '<div class="discovery-wrapper">';
+	
+	// "More in Tags" section
+	if (tagPosts.length > 0) {
+		const tagLabels = [...new Set(tagPosts.map(p => p.tag))].slice(0, 2);
+		const tagDisplay = tagLabels.map(t => `#${t}`).join(' & ');
+		
+		html += `
+			<div class="discovery-section discovery-tags">
+				<h3 class="discovery-heading">More in ${tagDisplay}</h3>
+				<div class="discovery-grid">
+		`;
+		
+		tagPosts.forEach(post => {
+			const hasImage = post.imageUrl && !post.imageUrl.startsWith('data:');
+			html += `
+				<a href="${post.href}" class="discovery-card ${hasImage ? '' : 'no-image'}">
+					<div class="discovery-card-image">
+						${hasImage ? `<img src="${post.imageUrl}" alt="" loading="lazy">` : '<div class="discovery-card-placeholder"></div>'}
+					</div>
+					<div class="discovery-card-title">${escapeHtml(post.title)}</div>
+				</a>
+			`;
+		});
+		
+		html += `
+				</div>
+			</div>
+		`;
+	}
+	
+	// "Top Stories" section
+	if (topStories.length > 0) {
+		html += `
+			<div class="discovery-section discovery-top">
+				<h3 class="discovery-heading">Top Stories</h3>
+				<ul class="discovery-list">
+		`;
+		
+		topStories.forEach(story => {
+			const timeAgo = story.date ? getRelativeTimeString(story.date) : '';
+			html += `
+				<li class="discovery-list-item">
+					<a href="${story.href}">
+						${timeAgo ? `<span class="discovery-date">${timeAgo}</span>` : ''}
+						${escapeHtml(story.title)}
+					</a>
+				</li>
+			`;
+		});
+		
+		html += `
+				</ul>
+			</div>
+		`;
+	}
+	
+	html += '</div>';
+	container.innerHTML = html;
+}
+
+// Initialize on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', initContentDiscovery);

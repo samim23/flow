@@ -223,13 +223,24 @@ pre {
 
 #site{
   width: 100%;
-  height: 100%;
   max-width: 780px;
   position: relative;
   right: 0;
   left: 0;
   margin-right: auto;
   margin-left: auto;
+  /* Sticky footer layout */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#site > main {
+  flex: 1 0 auto;
+}
+
+#site > #footer {
+  flex-shrink: 0;
 }
 #top-container {
   display: flex;
@@ -328,13 +339,7 @@ mark{
 .post_static a:hover{
   color:#2fbc5c;
 }
-#footer{
-  padding: 10px;
-  padding-left: 0px;
-  padding-right: 0px;
-  margin-bottom: 15px;
-  padding-top: 5px;
-}
+
 
 /* ==========================================================================
    Tags
@@ -1047,6 +1052,8 @@ mark{
 main {
   margin: 0;
   padding: 0;
+  margin-bottom: 20px;
+
 }
 main > .content_divider:first-of-type {
   margin-top: 0;
@@ -2448,5 +2455,275 @@ flow-embed {
   }
   .post_static {
     font-size: 16px;
+  }
+}
+
+/* ============================================
+   Content Discovery Section
+   ============================================ */
+.content-discovery {
+  /* Break out to full width */
+  margin-left: calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  width: 100vw;
+  margin-top: 4rem;
+  margin-bottom: -20px;
+  padding: 2rem 0 3rem;
+  background-color: #f8f8f8;
+}
+
+.discovery-wrapper {
+  /* Center content, wider than main blog */
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 0.7rem;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2.5rem;
+}
+
+.discovery-section {
+  min-width: 0;
+}
+
+/* Vertical divider between sections on desktop */
+.discovery-section.discovery-top {
+  border-left: 1px solid rgba(0, 0, 0, 0.15);
+  padding-left: 2rem;
+}
+
+.discovery-heading {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(0, 0, 0, 0.6);
+  margin: 0 0 1rem;
+  padding-bottom: 0.5rem;
+  /* border-bottom: 2px solid #0066ff; */
+}
+
+/* Tag Posts Grid */
+.discovery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.75rem 1.4rem; /* more vertical spacing */
+}
+
+.discovery-card,
+.discovery-card:hover,
+.discovery-card:visited {
+  display: block;
+  text-decoration: none !important;
+  color: inherit;
+  transition: transform 0.15s ease;
+}
+
+.discovery-card:hover {
+  transform: translateY(-2px);
+}
+
+.discovery-card-image {
+  aspect-ratio: 16 / 11; /* slightly taller images */
+  overflow: hidden;
+  border-radius: 4px;
+  background: #222;
+  margin-bottom: 0.6rem;
+}
+
+.discovery-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.discovery-card-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #e0e0e0 0%, #c8c8c8 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.discovery-card-placeholder::after {
+  content: "👁️‍🗨️";
+  font-size: 2rem;
+  opacity: 0.4;
+}
+
+.discovery-card:hover .discovery-card-image img {
+  transform: scale(1.05);
+}
+
+.discovery-card-title {
+  font-weight: 600;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.discovery-card:hover .discovery-card-title {
+  color: black;
+}
+
+/* Placeholder cards have same styling, just different image area */
+
+/* Top Stories List */
+.discovery-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.discovery-list-item {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.discovery-list-item:first-child {
+  padding-top: 0;
+}
+
+.discovery-list-item:last-child {
+  border-bottom: none;
+}
+
+.discovery-list-item a {
+  display: block;
+  font-weight: 600;
+  line-height: 1.4;
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.discovery-list-item a:hover {
+  color: #000000;
+}
+
+.discovery-date {
+  display: block;
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.5);
+  margin-top: 0.25rem;
+  text-transform: uppercase;
+}
+
+/* Mobile: Stack vertically */
+@media (max-width: 768px) {
+  .discovery-wrapper {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  .discovery-section.discovery-top {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.15);
+    padding-top: 1.5rem;
+  }
+  
+  .discovery-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .discovery-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+  
+  .discovery-card-title {
+    font-size: 13px;
+  }
+}
+
+/* ============================================
+   Footer
+   ============================================ */
+#footer {
+  background: #1a1a1a;
+  color: #999;
+  /* Break out to full width */
+  margin-left: calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  width: 100vw;
+}
+
+.footer-content {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 2.5rem 0rem;
+}
+
+.footer-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.footer-brand a {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  text-decoration: none;
+  letter-spacing: -0.02em;
+  padding-bottom: 4px;
+  border-bottom: 12px solid rgba(13, 204, 108, 1);
+  font-weight: 900 !important;
+}
+
+.footer-brand a:hover {
+  color: #3CFFD0;
+  border-bottom-color: #3CFFD0;
+}
+
+.footer-links {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.footer-links a {
+  color: #ccc;
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.15s ease;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.footer-links a:hover {
+  color: #3CFFD0;
+}
+
+.footer-newsletter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer-newsletter svg {
+  flex-shrink: 0;
+}
+
+.footer-copy {
+  font-size: 12px;
+  color: #666;
+}
+
+@media (max-width: 600px) {
+  .footer-content {
+    padding: 2rem 0.7rem;
+  }
+  
+  .footer-links {
+    gap: 1rem;
   }
 }

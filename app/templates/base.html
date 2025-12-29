@@ -244,7 +244,23 @@
       <p>Default content to be displayed</p>
       {%- endblock content -%}
     </main>
-    <footer id="footer"></footer>
+    <footer id="footer">
+      <div class="footer-content">
+        <div class="footer-top">
+          <div class="footer-brand">
+            <a href="{{ request.url_for('index') }}">{{app.site_name}}</a>
+          </div>
+          <nav class="footer-links">
+            {%- if app.newsletter_url %}
+            <a href="{{ app.newsletter_url }}" target="_blank" rel="noopener" class="footer-newsletter">
+              Newsletter
+            </a>
+            {%- endif %}
+            <a href="/rss.xml" target="_blank">RSS</a>
+          </nav>
+        </div>
+      </div>
+    </footer>
     <script src="{{ request.url_for('static', path='js/client.js') }}"></script>
   </div>
 </body>
