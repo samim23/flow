@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     enable_file_monitoring: bool = False  # Disabled by default to avoid watchdog issues
     
     # Build settings
-    build_search_index: bool = True  # Auto-build Pagefind search index (requires Node.js)
+    build_search_index: bool = False  # Auto-build Pagefind search index (requires Node.js)
 
     # Authentication (set admin_password to enable live mode with login)
     admin_password: str = ""  # Leave empty for local dev mode, set for live server

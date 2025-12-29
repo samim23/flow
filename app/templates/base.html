@@ -112,6 +112,7 @@
 
       {%- if freeze==1 -%}
       <div class="post_static_container">
+        {%- if is_live_mode or app.build_search_index -%}
         <div class="post_static">
           {%- if is_live_mode -%}
           <a title="Search" href="{{ request.url_for('search') }}">🔍</a>
@@ -119,6 +120,7 @@
           <a title="Search" href="#" id="search-toggle">🔍</a>
           {%- endif -%}
         </div>
+        {%- endif -%}
         <div class="post_static">
           <a title="Tags" href="{{ request.url_for('tags') }}">tags</a>
         </div>
