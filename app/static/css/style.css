@@ -663,7 +663,6 @@ mark{
   cursor: pointer;
   font-size: 13px;
   transition: all 0.15s ease;
-  margin-bottom: 60px;
 }
 #related_btn:hover {
   background-color: #f5f5f5;
