@@ -142,7 +142,7 @@ hr{
 blockquote {
   font-family: "FeatureFlatHeadline", "Georgia", "Times New Roman", "Times", serif;
   font-size: 1.0em;
-  border-left: 3px solid #F1F1F1;
+  border-left:  6px solid #E4E4E4;
   margin: 1.3em 0px;
   padding: 0em 20px;
   letter-spacing: .025px;
@@ -345,17 +345,17 @@ mark{
 }
 
 .hashtag-link {
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: rgba(0, 0, 0, 0);
   padding: 5px 5px;
   border-radius: 5px;
   text-decoration: none !important;
   font-size: 14px;
-  color: #1a1a1a;
-  border: 1px solid #e2e2e2;
+  color: #131313;
+  border: 1px solid rgba(0, 0, 0, 0.4);
 }
 
 .hashtag-link:hover {
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: rgba(0, 0, 0, 0);
   border-color:#2fbc5c;
   color:#2fbc5c;
 }
