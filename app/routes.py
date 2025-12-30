@@ -595,8 +595,12 @@ async def publish_site(request: Request, background_tasks: BackgroundTasks):
             # Generate the site
             await request.app.state.static_generator.generate_site()
             
-            if settings.server_ftp_enabled:
-                # Upload the site
+            # Upload the site using configured method
+            if settings.upload_method == "rsync" and settings.rsync_host:
+                # Use rsync (faster)
+                await request.app.state.rsync_uploader.upload_site(Path("build"))
+            elif settings.server_ftp_enabled:
+                # Fallback to FTP
                 await request.app.state.ftp_uploader.upload_site(Path("build"))
             
             # Write success message to the log file

@@ -782,7 +782,7 @@ document.addEventListener('DOMContentLoaded', initFlowEmbeds);
 window.initFlowEmbeds = initFlowEmbeds;
 
 // ============================================
-// Content Discovery - "More in [Tag]" + "Top Stories"
+// Content Discovery - "More in [Tag]" + "Newest Stories"
 // ============================================
 function initContentDiscovery() {
 	const discoveryContainer = document.getElementById('content-discovery');
@@ -926,31 +926,33 @@ function parseRSS(xml, excludePath) {
 	return posts.slice(0, 6); // Top 6 stories
 }
 
+// Fisher-Yates shuffle
+function shuffleArray(array) {
+	for (let i = array.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[array[i], array[j]] = [array[j], array[i]];
+	}
+	return array;
+}
+
 function getMixedTagPosts(tagPosts, maxPosts) {
-	const mixed = [];
+	// Collect all posts from all tags
+	const allPosts = [];
 	const usedHrefs = new Set();
 	
-	// Round-robin through tags to get a nice mix
-	let hasMore = true;
-	let index = 0;
-	const tagsList = Array.from(tagPosts.entries());
-	
-	while (mixed.length < maxPosts && hasMore) {
-		hasMore = false;
-		for (const [tag, posts] of tagsList) {
-			if (index < posts.length && mixed.length < maxPosts) {
-				const post = posts[index];
-				if (!usedHrefs.has(post.href)) {
-					usedHrefs.add(post.href);
-					mixed.push({ ...post, tag });
-					hasMore = true;
-				}
+	for (const [tag, posts] of tagPosts.entries()) {
+		for (const post of posts) {
+			if (!usedHrefs.has(post.href)) {
+				usedHrefs.add(post.href);
+				allPosts.push({ ...post, tag });
 			}
 		}
-		index++;
 	}
 	
-	return mixed;
+	// Shuffle for variety on each page load
+	shuffleArray(allPosts);
+	
+	return allPosts.slice(0, maxPosts);
 }
 
 function renderDiscovery(container, tags, tagPosts, topStories) {
@@ -991,11 +993,11 @@ function renderDiscovery(container, tags, tagPosts, topStories) {
 		`;
 	}
 	
-	// "Top Stories" section
+	// "Newest Stories" section
 	if (topStories.length > 0) {
 		html += `
 			<div class="discovery-section discovery-top">
-				<h3 class="discovery-heading">Top Stories</h3>
+				<h3 class="discovery-heading">Newest Stories</h3>
 				<ul class="discovery-list">
 		`;
 		

@@ -24,7 +24,7 @@ That's why I built Flow - a minimalist blogging engine that gets out of your way
 - 📊 **Content Explorer**: Visual timeline view of your content
 - 🔗 **Related Posts**: Discover and link to related content while writing
 - 📧 **Newsletter Integration**: Optional subscribe button with Mailchimp support
-- 📡 **FTP Integration**: One-click deployments to any host
+- 📡 **FTP & rsync**: One-click deployments via FTP or lightning-fast rsync over SSH
 - 📰 **RSS with Images**: Full RSS feed support including image enclosures
 - 🔄 **Incremental Builds**: Only rebuilds what changed
 - 🎯 **Minimal Configuration**: Works out of the box with sensible defaults
@@ -56,9 +56,38 @@ python3 flow.py
 
 3. Visit `http://127.0.0.1:2323/` to start creating content
 
-## Publishing via FTP
+## Publishing Your Site
 
-In your .env config set `server_ftp_enabled=true` and add your server infos.
+Flow supports two deployment methods: **FTP** (traditional) and **rsync** (faster, recommended if you have SSH access).
+
+### Option 1: rsync (Recommended)
+
+rsync is 10-100x faster than FTP for incremental updates. Requires SSH access to your server.
+
+```python
+# In app/settings.py
+upload_method: str = "rsync"
+rsync_host: str = "yourserver.com"
+rsync_user: str = "ssh_username"
+rsync_remote_path: str = "/var/www/html/"
+rsync_ssh_key: str = "~/.ssh/id_ed25519"  # Optional
+```
+
+**Note:** The `static/upload/` folder (media uploads) is automatically excluded from rsync delete operations to protect your uploaded images.
+
+### Option 2: FTP
+
+Traditional FTP upload, works with any hosting provider.
+
+```python
+# In app/settings.py or .env
+upload_method: str = "ftp"  # Default
+server_ftp_enabled: bool = True
+server_ftp_server: str = "ftp.yourhost.com"
+server_ftp_username: str = "your_username"
+server_ftp_password: str = "your_password"
+server_ftp_path: str = "/public_html/"
+```
 
 ## Running as a Live Server
 
@@ -140,6 +169,15 @@ Backlinks use the `<flow-embed>` tag which renders as a Twitter-style quote card
 ```
 
 The card content is fetched dynamically, so links always show fresh data.
+
+## Content Discovery
+
+Post detail pages automatically display a content discovery section at the bottom, inspired by The Verge:
+
+- **"More in #Tag"**: Shows related posts from the same tags as the current post
+- **"Top Stories"**: Shows your most recent posts from RSS
+
+This section loads asynchronously (doesn't block page render) and helps keep readers engaged with your content. Works on both the static site and live server mode.
 
 ## Cache Management
 

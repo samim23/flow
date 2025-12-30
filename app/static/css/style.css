@@ -2446,15 +2446,15 @@ flow-embed {
 
 /* Hide subscribe text on mobile */
 @media (max-width: 600px) {
-  .newsletter-btn span {
+  /* .newsletter-btn span {
     display: none;
-  }
+  } */
   /* Tighten nav spacing on mobile */
   #editor_tools, .post_static_container {
     gap: 0.5rem;
   }
   .post_static {
-    font-size: 16px;
+    font-size: 18px;
   }
 }
 

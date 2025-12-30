@@ -13,7 +13,7 @@ from app.settings import settings
 from app.routes import router
 from app.content import ContentManager
 from app.generator import StaticSiteGenerator
-from app.uploader import FTPUploader
+from app.uploader import FTPUploader, RsyncUploader
 
 # Configure logging
 logging.basicConfig(
@@ -78,6 +78,7 @@ static_generator = StaticSiteGenerator(
 )
 
 ftp_uploader = FTPUploader(settings)
+rsync_uploader = RsyncUploader(settings)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -93,6 +94,7 @@ templates = Jinja2Templates(directory="app/templates")
 app.state.content_manager = content_manager
 app.state.static_generator = static_generator
 app.state.ftp_uploader = ftp_uploader
+app.state.rsync_uploader = rsync_uploader
 app.state.templates = templates
 app.state.settings = settings
 

@@ -5,11 +5,91 @@ from pathlib import Path
 import hashlib
 from typing import List, Tuple
 import os
+import subprocess
 import logging
 from app.cache import get_cache
 
 
 logger = logging.getLogger(__name__)
+
+
+class RsyncUploader:
+    """Upload site using rsync over SSH - much faster than FTP for incremental updates"""
+    
+    def __init__(self, settings):
+        self.settings = settings
+        self.build_dir = Path(settings.local_build_path)
+    
+    async def upload_site(self, local_dir: Path = None):
+        """Upload site using rsync"""
+        local_dir = local_dir or self.build_dir
+        
+        if not self.settings.rsync_host or not self.settings.rsync_user:
+            logger.error("rsync_host and rsync_user must be configured in settings")
+            raise ValueError("rsync settings not configured")
+        
+        if not self.settings.rsync_remote_path:
+            logger.error("rsync_remote_path must be configured in settings")
+            raise ValueError("rsync_remote_path not configured")
+        
+        # Build rsync command
+        source = str(local_dir.resolve()) + "/"
+        dest = f"{self.settings.rsync_user}@{self.settings.rsync_host}:{self.settings.rsync_remote_path}"
+        
+        cmd = [
+            "rsync",
+            "-avz",           # archive, verbose, compress
+            "--progress",     # show progress
+            "--stats",        # show summary stats
+            "--exclude=static/upload/",  # NEVER delete uploaded media!
+            "--exclude=static/upload",   # Both with and without trailing slash
+        ]
+        
+        # Add delete flag if enabled (--delete-after ensures all uploads complete before any deletes)
+        if self.settings.rsync_delete:
+            cmd.append("--delete-after")
+        
+        # Add SSH key if specified
+        if self.settings.rsync_ssh_key:
+            ssh_key = os.path.expanduser(self.settings.rsync_ssh_key)
+            cmd.extend(["-e", f"ssh -i {ssh_key}"])
+        
+        cmd.extend([source, dest])
+        
+        logger.info(f"Starting rsync upload to {dest}")
+        logger.info(f"Command: {' '.join(cmd)}")
+        
+        try:
+            # Run rsync with real-time output
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            
+            # Stream output to logger
+            for line in process.stdout:
+                line = line.strip()
+                if line:
+                    logger.info(f"rsync: {line}")
+            
+            # Wait for completion
+            return_code = process.wait()
+            
+            if return_code == 0:
+                logger.info("rsync upload completed successfully")
+            else:
+                logger.error(f"rsync failed with return code {return_code}")
+                raise RuntimeError(f"rsync failed with return code {return_code}")
+                
+        except FileNotFoundError:
+            logger.error("rsync command not found. Please install rsync.")
+            raise
+        except Exception as e:
+            logger.error(f"rsync upload failed: {e}")
+            raise
 
 class FTPUploader:
     def __init__(self, settings):

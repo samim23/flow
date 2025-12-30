@@ -38,7 +38,10 @@ class Settings(BaseSettings):
     admin_password: str = ""  # Leave empty for local dev mode, set for live server
     session_secret: str = "change-this-secret-key-in-production"  # Used to sign session cookies
 
-    # FTP settings
+    # Upload settings
+    upload_method: str = "ftp"  # Options: "ftp" or "rsync"
+    
+    # FTP settings (used when upload_method = "ftp")
     server_ftp_enabled: bool = True
     server_ftp_server: str = "default_ftp_url"
     server_ftp_username: str = "default_user"
@@ -46,6 +49,13 @@ class Settings(BaseSettings):
     server_ftp_path: Path = Path("/public_html/")
     server_ftp_media_path: str = "/public_html/static/upload/"
     server_ftp_media_site_path: str = "https://samim.io/static/upload/"
+    
+    # rsync settings (used when upload_method = "rsync")
+    rsync_host: str = "127.0.0.1"                   # e.g., "samim.io" or IP address
+    rsync_user: str = "ssh_username"                # SSH username
+    rsync_remote_path: str = "/public_html/"        # path to remote directory, e.g., "/var/www/html/" or "/home/user/public_html/"
+    rsync_ssh_key: str = "~/.ssh/id_ed12345"        # path to PRIVATE SSH key
+    rsync_delete: bool = False                      # Delete remote files not in local (keeps remote clean)
 
     # File paths
     local_upload_path: Path = Path("upload/")
