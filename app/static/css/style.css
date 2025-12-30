@@ -249,6 +249,7 @@ pre {
   position: relative;
   padding-top: 1rem;
   padding-bottom: 0.8rem;
+  overflow-x: auto;
 }
 #site_logo{
   flex-shrink: 0;
@@ -256,12 +257,7 @@ pre {
   font-size: 35px;
   margin:0;
   padding: 0;
-}
-
-@media (max-width: 750px) {
-  #site_logo{
-      font-size: 1.8em;
-  }
+  padding-right: 20px;
 }
 
 #site_logo a{
@@ -279,6 +275,11 @@ pre {
 }
 #site_logo a:hover{
   color: rgba(13, 204, 108, 1);
+}
+@media (max-width: 750px) {
+  #site_logo{
+      font-size: 28px;
+  }
 }
 
 #editor_tools, .post_static_container {
@@ -335,6 +336,7 @@ mark{
   text-decoration: none;
   color:#000000;
   font-weight: 100 !important;
+  white-space: nowrap;
 }
 .post_static a:hover{
   color:#2fbc5c;
@@ -409,6 +411,7 @@ mark{
   align-items: center;
   font-size: 16px;
 }
+
 
 @media (max-width: 512px) {
   .tag-search-container {
