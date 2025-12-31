@@ -751,9 +751,17 @@ async function fetchAndRenderEmbed(embed, url) {
 		
 		// Extract content from the page
 		const entry = doc.querySelector('.h-entry');
-		const title = doc.querySelector('title')?.textContent?.trim() || 
+		let title = doc.querySelector('title')?.textContent?.trim() || 
 		              doc.querySelector('.post_date_title')?.textContent?.trim() ||
 		              'Untitled';
+		// Strip site name suffix from title (e.g., "Post Title - SiteName" -> "Post Title")
+		// Get site name from meta tag, falling back to extracting from current page title
+		const siteName = document.querySelector('meta[name="site-name"]')?.content || 
+		                 document.title.split(' - ').pop();
+		if (siteName) {
+			const suffixPattern = new RegExp(`\\s*-\\s*${siteName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+			title = title.replace(suffixPattern, '');
+		}
 		const dateElem = doc.querySelector('.dt-published');
 		const date = dateElem?.getAttribute('datetime') || '';
 		const formattedDate = date ? getRelativeTimeString(date) : '';

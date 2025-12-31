@@ -17,6 +17,7 @@
   {% endif -%}
   <meta name="theme-color" content="#ffffff">
   <meta name="format-detection" content="telephone=no">
+  <meta name="site-name" content="{{app.site_name}}">
   <meta name="apple-mobile-web-app-capable" content="yes">
 
   {# === CANONICAL URLs for all page types === #}
@@ -262,7 +263,7 @@
       </ul>
     </div>
     {%- endif %}
-    {%- if freeze==1 -%}
+    {%- if freeze==1 and app.build_search_index -%}
     <div id="search-container" style="display: none; padding: 15px 0; border-bottom: 2px solid #f1f1f1; margin-bottom: 15px;">
       <div id="search"></div>
     </div>
