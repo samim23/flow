@@ -2917,6 +2917,7 @@ flow-embed {
   padding: 1.5rem 2rem;
   margin: 2rem 0;
   position: relative;
+  text-align: center;
 }
 
 .about-quote::before {
@@ -2942,9 +2943,10 @@ flow-embed {
 
 .about-footer-note {
   text-align: center;
-  font-size: 0.85rem;
   color: #999;
-  margin-top: 2rem;
+  font-size: 1rem;
+  margin-top: 2.5rem;
+  margin-bottom: 5rem;
 }
 
 .about-footer-note a {
