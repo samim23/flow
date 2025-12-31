@@ -18,7 +18,7 @@ import hashlib
 import hmac
 
 from app.settings import settings
-from app.utils import clean_content, extract_first_image, get_image_mime_type, Paginator
+from app.utils import clean_content, extract_first_image, get_image_mime_type, Paginator, convert_to_webp
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -635,7 +635,7 @@ def allowed_file(filename: str) -> bool:
 
 @router.post("/upload")
 async def upload(request: Request, file: UploadFile = File(...)):
-    """Handle file uploads"""
+    """Handle file uploads with automatic WebP conversion for images"""
     # Require authentication in live mode
     if is_live_mode() and not is_authenticated(request):
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -647,6 +647,16 @@ async def upload(request: Request, file: UploadFile = File(...)):
 
         # Sanitize filename
         filename = secure_filename(file.filename)
+        
+        # Read file content
+        content = await file.read()
+        
+        # Convert images to WebP (except animated GIFs)
+        # This reduces file size by ~40-60% with quality 90
+        original_ext = filename.lower().rsplit('.', 1)[-1] if '.' in filename else ''
+        if original_ext in {'png', 'jpg', 'jpeg', 'gif'}:
+            content, filename = convert_to_webp(content, filename, quality=90)
+            logger.info(f"Converted image to WebP: {filename}")
         
         # Make filename unique if needed
         file_path = Path(settings.local_upload_path) / filename
@@ -660,7 +670,6 @@ async def upload(request: Request, file: UploadFile = File(...)):
         Path(settings.local_upload_path).mkdir(parents=True, exist_ok=True)
         
         # Save file locally
-        content = await file.read()
         file_path.write_bytes(content)
         file_size = file_path.stat().st_size
         

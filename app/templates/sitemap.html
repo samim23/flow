@@ -3,11 +3,27 @@
 	<url>
 		<loc>{{app.site_url}}</loc>
 		<lastmod>{{ datenow.strftime('%Y-%m-%d') }}</lastmod>
+		<changefreq>daily</changefreq>
+		<priority>1.0</priority>
+	</url>
+	<url>
+		<loc>{{app.site_url}}/explore/</loc>
+		<lastmod>{{ datenow.strftime('%Y-%m-%d') }}</lastmod>
+		<changefreq>weekly</changefreq>
+		<priority>0.7</priority>
+	</url>
+	<url>
+		<loc>{{app.site_url}}/tag/</loc>
+		<lastmod>{{ datenow.strftime('%Y-%m-%d') }}</lastmod>
+		<changefreq>weekly</changefreq>
+		<priority>0.6</priority>
 	</url>
 	{% for page in pages %}
 	<url>
 		<loc>{{app.site_url}}/p/{{page.path}}/</loc>
 		<lastmod>{{ page.date.strftime('%Y-%m-%d') }}</lastmod>
+		<changefreq>monthly</changefreq>
+		<priority>0.8</priority>
 	</url>
 	{% endfor %}
 </urlset>

@@ -12,21 +12,72 @@
   <meta name="author" content="{{app.author_name}}">
   {%- if page and page.meta and page.meta.tags %}
   <meta name="keywords" content="{{page.meta.tags|join(', ')}}">
+  {%- elif tag %}
+  <meta name="keywords" content="{{tag}}">
   {% endif -%}
   <meta name="theme-color" content="#ffffff">
   <meta name="format-detection" content="telephone=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
+
+  {# === CANONICAL URLs for all page types === #}
+  {%- if page -%}
+  <link rel="canonical" href="{{app.site_url}}/p/{{page.path}}/" />
+  {%- elif tag -%}
+  <link rel="canonical" href="{{app.site_url}}/tag/{{tag}}/" />
+  {%- elif tags is defined -%}
+  <link rel="canonical" href="{{app.site_url}}/tag/" />
+  {%- elif stats is defined -%}
+  <link rel="canonical" href="{{app.site_url}}/explore/" />
+  {%- elif query is defined -%}
+  {# Search pages don't need canonical - they're noindex #}
+  {%- elif isArchive -%}
+  {# Archive pages don't need canonical - they're noindex #}
+  {%- else -%}
+  <link rel="canonical" href="{{app.site_url}}/" />
+  {%- endif -%}
+
+  {# === ROBOTS meta tags for proper indexing === #}
+  {%- if isArchive == True -%}
+  <meta name="robots" content="noindex, follow">
+  {%- elif tag and not tags -%}
+  {# Individual tag pages (e.g., /tag/ML/) should be noindex to avoid duplicate content #}
+  <meta name="robots" content="noindex, follow">
+  {%- elif query is defined -%}
+  {# Search result pages should not be indexed #}
+  <meta name="robots" content="noindex, follow">
+  {%- else -%}
+  <meta name="robots" content="index, follow">
+  {%- endif -%}
+
+  {# === Open Graph meta tags === #}
   <meta property="og:title" content="{{pageTitle}}" />
   <meta property="og:description" content="{% if pageDescription %}{{pageDescription}}{% else %}{{app.site_description}}{% endif %}" />
   <meta property="og:type" content="{% if page %}article{% else %}website{% endif %}" />
-  <meta property="og:url" content="{{app.site_url}}{% if page %}/p/{{page.path}}/{% endif %}" />
+  {%- if page -%}
+  <meta property="og:url" content="{{app.site_url}}/p/{{page.path}}/" />
+  {%- elif tag -%}
+  <meta property="og:url" content="{{app.site_url}}/tag/{{tag}}/" />
+  {%- elif tags is defined -%}
+  <meta property="og:url" content="{{app.site_url}}/tag/" />
+  {%- elif stats is defined -%}
+  <meta property="og:url" content="{{app.site_url}}/explore/" />
+  {%- else -%}
+  <meta property="og:url" content="{{app.site_url}}/" />
+  {%- endif -%}
   {%- if page and page.meta and page.meta.image -%}
   <meta property="og:image" content="{{page.meta.image}}" />
+  {%- else -%}
+  <meta property="og:image" content="{{app.author_image}}" />
   {% endif %}
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:site" content="@{{app.author_twitter}}" />
   <meta name="twitter:title" content="{{pageTitle}}" />
   <meta name="twitter:description" content="{% if pageDescription %}{{pageDescription}}{% else %}{{app.site_description}}{% endif %}" />
+
+  {# === Preload critical fonts for LCP performance === #}
+  <link rel="preload" href="{{ request.url_for('static', path='fonts/Suisselntl/SuisseIntl-Regular.woff2') }}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{{ request.url_for('static', path='fonts/FeatureFlat/FeatureFlatHeadline.woff2') }}" as="font" type="font/woff2" crossorigin>
+
   <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="{{ request.url_for('feedrss') }}" />
   <link rel='icon' href="{{ request.url_for('static', path='img/favicon.png') }}" type="image/png"/>
   <link rel="dns-prefetch" href="{{app.site_url}}">
@@ -60,13 +111,10 @@
   <script src="{{ request.url_for('static', path='js/vendor/autolist.min.js') }}"></script>
   <script src="{{ request.url_for('static', path='js/main.js') }}"></script>
   {%- endif %}
-  {% if page %}
-  <link rel="canonical" href="{{app.site_url}}/p/{{page.path}}/" />
-  {% endif %}
-  {%- if isArchive == True -%}
-  <meta name="robots" content="noindex, follow">
-  {%- endif %}
-  {%- if page and page.date %}
+
+  {# === JSON-LD Structured Data === #}
+  {%- if page and page.date -%}
+  {%- set content_images = page.html|extract_images -%}
   <script type="application/ld+json">{
     "@context": "https://schema.org",
     "@type": "BlogPosting",
@@ -85,15 +133,15 @@
         "@type": "ImageObject",
         "url": "{{app.author_image}}"
       }
-    }{% if page.meta and page.meta.tags %},"keywords": "{{page.meta.tags|join(', ')}}"{% endif %},"url": "{{app.site_url}}/p/{{page.path|default('', true)}}/",
+    }{% if page.meta and page.meta.tags %},"keywords": "{{page.meta.tags|join(', ')}}"{% endif %},
+    "url": "{{app.site_url}}/p/{{page.path|default('', true)}}/",
     "mainEntityOfPage": {
       "@type": "WebPage",
       "@id": "{{app.site_url}}/p/{{page.path|default('', true)}}/"
-    }{% if page.meta and page.meta.image %},"image": {
-      "@type": "ImageObject",
-      "url": "{{page.meta.image}}"
-    }{% endif %}
-  }</script>{% endif %}
+    }{% if page.meta and page.meta.image or content_images %},
+    "image": {% if content_images|length > 1 %}[{% for img in content_images %}{"@type": "ImageObject", "url": "{{img}}"}{% if not loop.last %}, {% endif %}{% endfor %}]{% elif content_images|length == 1 %}{"@type": "ImageObject", "url": "{{content_images[0]}}"}{% elif page.meta and page.meta.image %}{"@type": "ImageObject", "url": "{{page.meta.image}}"}{% endif %}{% endif %}
+  }</script>
+  {%- endif %}
 </head>
 <body>
   {% if freeze==1 %}

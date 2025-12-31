@@ -86,6 +86,42 @@ function slugify(text) {
 		.replace(/[\s_-]+/g, "-");
 }
 
+// Generate readable alt text from filename for SEO
+function generateAltFromFilename(filename) {
+	if (!filename) return 'Image';
+	
+	// Remove file extension
+	var name = filename.replace(/\.[^/.]+$/, '');
+	
+	// Remove common prefixes (dates, random hashes)
+	name = name
+		.replace(/^\d{4}-\d{2}-\d{2}-?/, '')  // Remove date prefixes like 2024-01-15-
+		.replace(/^[a-f0-9]{8,}-?/i, '')       // Remove hash prefixes
+		.replace(/-[a-f0-9]{8,}$/i, '');       // Remove hash suffixes
+	
+	// Replace dashes, underscores, and camelCase with spaces
+	name = name
+		.replace(/[-_]+/g, ' ')                // Replace dashes/underscores with spaces
+		.replace(/([a-z])([A-Z])/g, '$1 $2')   // Split camelCase
+		.replace(/\s+/g, ' ')                  // Collapse multiple spaces
+		.trim();
+	
+	// Capitalize first letter of each word (title case)
+	name = name.toLowerCase().replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+	
+	// If name is empty or too short after cleaning, use a generic fallback
+	if (!name || name.length < 2) {
+		return 'Image';
+	}
+	
+	// Truncate if too long (max 100 chars for alt text)
+	if (name.length > 100) {
+		name = name.substring(0, 100).trim();
+	}
+	
+	return name;
+}
+
 function cleanContent(elContent) {
 	function replaceLast(str, word, newWord) {
 		str = str.trim();
@@ -314,12 +350,18 @@ function editor_setup(container, editor) {
 						// Replace the blob URL with the actual file URL in the HTML
 						if (data.blobUrl && data.result && data.result.files && data.result.files[0]) {
 							var actualUrl = data.result.files[0].url;
+							var originalFilename = data.result.files[0].name || '';
+							
+							// Generate alt text from filename
+							var altText = generateAltFromFilename(originalFilename);
+							
 							// Find images with this blob URL and update them
-							$('img[src="' + data.blobUrl + '"]').attr('src', actualUrl);
+							$('img[src="' + data.blobUrl + '"]').attr('src', actualUrl).attr('alt', altText);
 							
 							// Also find by the data attribute (more reliable)
-							$('figure[data-blob-url="' + data.blobUrl + '"]').find('img').attr('src', actualUrl);
-							$('figure[data-blob-url="' + data.blobUrl + '"]').removeAttr('data-blob-url');
+							var $figure = $('figure[data-blob-url="' + data.blobUrl + '"]');
+							$figure.find('img').attr('src', actualUrl).attr('alt', altText);
+							$figure.removeAttr('data-blob-url');
 							
 							// Revoke the blob URL to free memory
 							URL.revokeObjectURL(data.blobUrl);

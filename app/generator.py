@@ -268,6 +268,12 @@ class StaticSiteGenerator:
             lstrip_blocks=True
         )
         
+        # Add custom Jinja filters for SEO and image handling
+        from app.utils import extract_all_images, get_content_stats
+        site_url = settings.site_url if settings else ""
+        self.env.filters['extract_images'] = lambda html: extract_all_images(html, site_url)
+        self.env.filters['content_stats'] = get_content_stats
+        
         self.mock_request = MockRequest(settings) if settings else None
         self._template_cache = {}
         self._rendered_content = {}  # Cache for rendered content

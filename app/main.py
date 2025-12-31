@@ -90,6 +90,12 @@ app.mount("/upload", StaticFiles(directory=upload_path), name="upload")
 # Set up templates
 templates = Jinja2Templates(directory="app/templates")
 
+# Add custom Jinja filters for SEO and image handling
+from app.utils import extract_all_images, get_content_stats
+
+templates.env.filters['extract_images'] = lambda html: extract_all_images(html, settings.site_url)
+templates.env.filters['content_stats'] = get_content_stats
+
 # Make core components available to routes
 app.state.content_manager = content_manager
 app.state.static_generator = static_generator

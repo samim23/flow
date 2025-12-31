@@ -21,22 +21,48 @@ import os
 
 logger = logging.getLogger(__name__)
 
-def add_lazy_loading(html: str) -> str:
-    """Add loading='lazy' attribute to all img tags that don't already have it."""
-    # Match img tags that don't already have loading attribute
+def add_image_loading_hints(html: str) -> str:
+    """
+    Add loading hints to images for better LCP performance:
+    - First image: fetchpriority="high" + loading="eager" (LCP candidate)
+    - Subsequent images: loading="lazy"
+    """
+    image_count = [0]  # Use list to allow modification in nested function
+    
     def add_loading_attr(match):
         img_tag = match.group(0)
+        image_count[0] += 1
+        
         # Skip if already has loading attribute
         if 'loading=' in img_tag.lower():
+            # For first image, ensure it has fetchpriority if not present
+            if image_count[0] == 1 and 'fetchpriority=' not in img_tag.lower():
+                # Remove loading="lazy" if present and add high priority
+                img_tag = re.sub(r'\s*loading=["\']lazy["\']', '', img_tag, flags=re.IGNORECASE)
+                if img_tag.endswith('/>'):
+                    return img_tag[:-2] + ' fetchpriority="high" loading="eager" />'
+                elif img_tag.endswith('>'):
+                    return img_tag[:-1] + ' fetchpriority="high" loading="eager">'
             return img_tag
-        # Add loading="lazy" before the closing > or />
+        
+        # First image gets high priority for LCP
+        if image_count[0] == 1:
+            attrs = ' fetchpriority="high" loading="eager"'
+        else:
+            attrs = ' loading="lazy"'
+        
+        # Add attributes before the closing > or />
         if img_tag.endswith('/>'):
-            return img_tag[:-2] + ' loading="lazy" />'
+            return img_tag[:-2] + attrs + ' />'
         elif img_tag.endswith('>'):
-            return img_tag[:-1] + ' loading="lazy">'
+            return img_tag[:-1] + attrs + '>'
         return img_tag
     
     return re.sub(r'<img\s[^>]*>', add_loading_attr, html, flags=re.IGNORECASE)
+
+
+# Keep old function name as alias for backwards compatibility
+add_lazy_loading = add_image_loading_hints
 
 # Helper function to preprocess Markdown content
 def preprocess_markdown(content: str) -> str:
