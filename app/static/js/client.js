@@ -196,6 +196,9 @@ function getRelativeTimeString(date) {
 }
 
 function formatDate() {
+	// Check if we're on a detail page (single post view)
+	const isDetailPage = window.location.pathname.startsWith('/p/');
+	
 	if (!isBot()) {
 		document.querySelectorAll(".post_date_title").forEach((el) => {
 			el.style.display = "none";
@@ -206,13 +209,25 @@ function formatDate() {
 		.querySelectorAll(".dt-published:not([data-formatted])")
 		.forEach((dateElem) => {
 			const date = dateElem.getAttribute("datetime");
-			const formatted = getRelativeTimeString(date);
-			dateElem.textContent = formatted;
-			dateElem.setAttribute("data-formatted", "true");
+			if (!date) return;
 			
-			// Add absolute date as title for hover tooltip
-			if (date) {
-				const dateObj = new Date(date);
+			const dateObj = new Date(date);
+			
+			if (isDetailPage) {
+				// On detail pages, show full date
+				const fullDate = dateObj.toLocaleDateString('en-US', {
+					weekday: 'long',
+					year: 'numeric',
+					month: 'long',
+					day: 'numeric'
+				});
+				dateElem.textContent = fullDate;
+			} else {
+				// On list pages, show relative time
+				const formatted = getRelativeTimeString(date);
+				dateElem.textContent = formatted;
+				
+				// Add absolute date as title for hover tooltip
 				const absoluteDate = dateObj.toLocaleString('en-US', {
 					year: 'numeric',
 					month: 'short',
@@ -222,6 +237,8 @@ function formatDate() {
 				});
 				dateElem.setAttribute("title", absoluteDate);
 			}
+			
+			dateElem.setAttribute("data-formatted", "true");
 		});
 }
 
@@ -812,17 +829,18 @@ function initContentDiscovery() {
 	
 	const currentPath = discoveryContainer.dataset.currentPath;
 	
-	// Extract tags from JSON-LD on the page
-	const jsonLdScript = document.querySelector('script[type="application/ld+json"]');
+	// Extract tags from JSON-LD on the page (search all JSON-LD scripts for one with keywords)
+	const jsonLdScripts = document.querySelectorAll('script[type="application/ld+json"]');
 	let tags = [];
-	if (jsonLdScript) {
+	for (const script of jsonLdScripts) {
 		try {
-			const jsonLd = JSON.parse(jsonLdScript.textContent);
+			const jsonLd = JSON.parse(script.textContent);
 			if (jsonLd.keywords) {
 				tags = jsonLd.keywords.split(', ').filter(t => t.trim());
+				break; // Found keywords, stop searching
 			}
 		} catch (e) {
-			console.error('Failed to parse JSON-LD:', e);
+			// Skip invalid JSON-LD scripts
 		}
 	}
 	
@@ -988,8 +1006,18 @@ function renderDiscovery(container, tags, tagPosts, topStories) {
 	
 	// "More in Tags" section
 	if (tagPosts.length > 0) {
-		const tagLabels = [...new Set(tagPosts.map(p => p.tag))].slice(0, 2);
-		const tagDisplay = tagLabels.map(t => `#${t}`).join(' & ');
+		// Build title showing tags - use original tags from the page
+		const allTags = tags.length > 0 ? tags : [...new Set(tagPosts.map(p => p.tag))];
+		let tagDisplay;
+		if (allTags.length === 1) {
+			tagDisplay = `#${allTags[0]}`;
+		} else if (allTags.length === 2) {
+			tagDisplay = `#${allTags[0]} & #${allTags[1]}`;
+		} else {
+			// 3+ tags: show first 2, then "+ N more"
+			const remaining = allTags.length - 2;
+			tagDisplay = `#${allTags[0]}, #${allTags[1]} & ${remaining} more`;
+		}
 		
 		html += `
 			<div class="discovery-section discovery-tags">
