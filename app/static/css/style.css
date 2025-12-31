@@ -358,7 +358,7 @@ mark{
   text-decoration: none !important;
   font-size: 14px;
   color: #131313;
-  border: 1px solid rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 0, 0, 0.8);
 }
 
 .hashtag-link:hover {
@@ -995,9 +995,13 @@ mark{
 }
 
 #pagination_container{
+  margin-top: 20px;
   margin-bottom: 20px;
   font-weight: 600;
   font-size: 1.3em;
+  display: flex;
+  gap: 10px;
+  text-transform: uppercase;
 }
 .e-content img{
   max-width: 60%;
@@ -3041,7 +3045,7 @@ flow-embed {
 
 .footer-links {
   display: flex;
-  gap: 1.5rem;
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
@@ -3052,6 +3056,18 @@ flow-embed {
   transition: color 0.15s ease;
   font-weight: 900;
   text-transform: uppercase;
+
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  font-weight: 900;
+  padding: 8px 15px 5px 15px;
+  border-radius: 100px;
+}
+
+.footer-newsletter::after {
+  content: '→';
+  display: inline-block;
+  height: 100%;
+  margin-bottom: 2px; 
 }
 
 .footer-links a:hover {

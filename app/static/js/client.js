@@ -22,10 +22,27 @@ function isMobile() {
 }
 
 function isBot() {
-	const botPattern =
-		"(googlebot/|bot|Googlebot-Mobile|Googlebot-Image|Google favicon|Mediapartners-Google|bingbot|slurp|java|wget|curl|Commons-HttpClient|Python-urllib|libwww|httpunit|nutch|phpcrawl|msnbot|jyxobot|FAST-WebCrawler|FAST Enterprise Crawler|biglotron|teoma|convera|seekbot|gigablast|exabot|ngbot|ia_archiver|GingerCrawler|webmon |httrack|webcrawler|grub.org|UsineNouvelleCrawler|antibot|netresearchserver|speedy|fluffy|bibnum.bnf|findlink|msrbot|panscient|yacybot|AISearchBot|IOI|ips-agent|tagoobot|MJ12bot|dotbot|woriobot|yanga|buzzbot|mlbot|yandexbot|purebot|Linguee Bot|Voyager|CyberPatrol|voilabot|baiduspider|citeseerxbot|spbot|twengabot|postrank|turnitinbot|scribdbot|page2rss|sitebot|linkdex|Adidxbot|blekkobot|ezooms|dotbot|Mail.RU_Bot|discobot|heritrix|findthatfile|europarchive.org|NerdByNature.Bot|sistrix crawler|ahrefsbot|Aboundex|domaincrawler|wbsearchbot|summify|ccbot|edisterbot|seznambot|ec2linkfinder|gslfbot|aihitbot|intelium_bot|facebookexternalhit|yeti|RetrevoPageAnalyzer|lb-spider|sogou|lssbot|careerbot|wotbox|wocbot|ichiro|DuckDuckBot|lssrocketcrawler|drupact|webcompanycrawler|acoonbot|openindexspider|gnam gnam spider|web-archive-net.com.bot|backlinkcrawler|coccoc|integromedb|content crawler spider|toplistbot|seokicks-robot|it2media-domain-crawler|ip-web-crawler.com|siteexplorer.info|elisabot|proximic|changedetection|blexbot|arabot|WeSEE:Search|niki-bot|CrystalSemanticsBot|rogerbot|360Spider|psbot|InterfaxScanBot|CC Metadata Scaper)";
-	const re = new RegExp(botPattern, "i");
-	return re.test(navigator.userAgent);
+	// Comprehensive bot detection - includes search engines, AI crawlers, social previews, etc.
+	const botPatterns = [
+		// Major search engines
+		'googlebot', 'bingbot', 'yandexbot', 'baiduspider', 'duckduckbot', 'slurp', 'sogou',
+		// AI/LLM crawlers
+		'gptbot', 'chatgpt', 'claude-web', 'anthropic', 'ccbot', 'perplexitybot', 'cohere-ai',
+		// SEO tools
+		'ahrefsbot', 'semrushbot', 'mj12bot', 'dotbot', 'rogerbot', 'screaming frog',
+		// Social media previews
+		'facebookexternalhit', 'twitterbot', 'linkedinbot', 'slackbot', 'telegrambot', 'whatsapp', 'discordbot',
+		// Archive/research
+		'ia_archiver', 'archive.org_bot', 'heritrix',
+		// Generic patterns
+		'bot', 'spider', 'crawl', 'wget', 'curl', 'python-urllib', 'python-requests', 'libwww',
+		'httpunit', 'nutch', 'phpcrawl', 'httrack', 'java/', 'perl', 'ruby',
+		// Other known bots
+		'applebot', 'bytespider', 'petalbot', '360spider', 'seznambot', 'exabot',
+		'gigablast', 'teoma', 'blexbot', 'linkdex', 'msnbot'
+	];
+	const pattern = new RegExp(botPatterns.join('|'), 'i');
+	return pattern.test(navigator.userAgent);
 }
 
 // Image Gallery class
@@ -515,6 +532,11 @@ function infiniteScroll() {
 		}
 	}
 
+	// Mobile gets larger threshold and longer debounce for stability
+	const mobile = isMobile();
+	const threshold = mobile ? 1500 : 1000; // Trigger earlier on mobile to feel smoother
+	const debounceMs = mobile ? 250 : 150;  // Longer debounce on mobile to reduce load
+
 	// Add scroll handler with debounce
 	let scrollTimeout;
 	window.addEventListener("scroll", () => {
@@ -522,12 +544,11 @@ function infiniteScroll() {
 		scrollTimeout = setTimeout(() => {
 			const scrollPosition = window.innerHeight + window.scrollY;
 			const totalHeight = document.documentElement.scrollHeight;
-			const threshold = 1000; // Trigger when within 1000px of bottom
 
 			if (scrollPosition >= totalHeight - threshold) {
 				loadPage();
 			}
-		}, 150);
+		}, debounceMs);
 	});
 }
 
@@ -623,7 +644,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 	formatDate();
 
-	if (!isMobile() && !isBot()) {
+	// Enable infinite scroll for all devices, but not for bots
+	if (!isBot()) {
 		infiniteScroll();
 	}
 
