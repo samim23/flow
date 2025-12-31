@@ -2647,6 +2647,356 @@ flow-embed {
 }
 
 /* ============================================
+   About Page Styles
+   ============================================ */
+.about-page {
+  font-size: 1.125rem;
+}
+
+/* Hide the post meta for about page */
+.about-page .post_meta,
+.e-content.about-page + .post_meta,
+.post:has(.about-page) .post_meta {
+  display: none !important;
+}
+
+/* Also hide in parent context */
+.post .about-page ~ .post_meta,
+.h-entry:has(.about-page) .post_meta {
+  display: none !important;
+}
+
+.about-hero {
+  text-align: center;
+  padding: 1.5rem 0 2rem;
+  position: relative;
+}
+
+.about-hero-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin: 0 auto 1rem;
+  display: block;
+}
+
+.about-hero h2 {
+  font-size: 2.5rem;
+  margin: 0 0 0.75rem;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #131313 0%, #444 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.about-hero-intro {
+  font-family: "FeatureFlatHeadline", Georgia, serif;
+  font-size: 1.55rem;
+  line-height: 1.6;
+  color: #4a4a4a;
+  max-width: 580px;
+  margin: 0 auto;
+  font-weight: 330;
+  font-variation-settings: "wght" 330, "opsz" 10;
+  border: none;
+  padding: 0;
+}
+
+.about-hero-intro a {
+  color: #377ba8;
+  text-decoration: underline;
+  text-decoration-color: rgba(55, 123, 168, 0.3);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.2s ease;
+}
+
+.about-hero-intro a:hover {
+  text-decoration-color: #0dcc6c;
+  color: #0dcc6c;
+}
+
+/* Newsletter CTA Card */
+.about-cta-card {
+  background: linear-gradient(135deg, #f8fdf9 0%, #edfbf2 100%);
+  border: 2px solid rgba(13, 204, 108, 0.2);
+  border-radius: 16px;
+  padding: 2rem;
+  margin: 2rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.about-cta-card::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(13, 204, 108, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.about-cta-card h2 {
+  font-size: 1.5rem;
+  margin: 0 0 0.5rem;
+  position: relative;
+}
+
+.about-cta-card h2 a {
+  color: #131313;
+  text-decoration: none;
+  border-bottom: 3px solid #0dcc6c;
+  transition: color 0.2s ease;
+}
+
+.about-cta-card h2 a:hover {
+  color: #0dcc6c;
+}
+
+.about-cta-card blockquote {
+  font-size: 1.1rem;
+  border: none;
+  margin: 0.5rem 0 1rem;
+  padding: 0;
+  color: #555;
+  font-style: normal;
+  font-family: inherit;
+  font-weight: normal;
+}
+
+.about-cta-card .about-follow-links {
+  font-size: 0.95rem;
+  color: #666;
+}
+
+.about-cta-card .about-follow-links a {
+  color: #377ba8;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.about-cta-card .about-follow-links a:hover {
+  color: #0dcc6c;
+}
+
+/* About Me Section */
+.about-section {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 2rem;
+  align-items: start;
+  margin: 2.5rem 0;
+}
+
+/* Hide content discovery on about page */
+.about-page ~ #content-discovery,
+.e-content.about-page ~ #content-discovery {
+  display: none !important;
+}
+
+.about-section h2 {
+  font-size: 1.75rem;
+  margin: 0 0 1rem;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.about-section h2::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg, #e0e0e0, transparent);
+}
+
+.about-bio {
+  font-family: "FeatureFlatHeadline", Georgia, serif;
+  font-size: 1.15rem;
+  line-height: 1.7;
+  color: #333;
+  font-weight: 330;
+  font-variation-settings: "wght" 330, "opsz" 10;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.about-image-wrapper {
+  position: relative;
+}
+
+.about-image-wrapper img {
+  width: 100%;
+  max-width: 130px;
+  height: auto;
+}
+
+/* Links Section */
+.about-links-section {
+  margin: 2rem 0;
+}
+
+.about-links-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.about-link-card {
+  display: block;
+  background: #fff;
+  border: 2px solid #e8e8e8;
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-decoration: none !important;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.about-link-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: #0dcc6c;
+  transform: scaleY(0);
+  transition: transform 0.2s ease;
+}
+
+.about-link-card:hover {
+  border-color: #0dcc6c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(13, 204, 108, 0.15);
+}
+
+.about-link-card:hover::before {
+  transform: scaleY(1);
+}
+
+.about-link-card h3 {
+  font-size: 1rem;
+  margin: 0 0 0.25rem;
+  color: #131313;
+}
+
+.about-link-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.about-link-card .link-arrow {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  color: #ccc;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.about-link-card:hover .link-arrow {
+  color: #0dcc6c;
+  transform: translateY(-50%) translateX(4px);
+}
+
+/* Quote Block */
+.about-quote {
+  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  margin: 2rem 0;
+  position: relative;
+}
+
+.about-quote::before {
+  content: """;
+  position: absolute;
+  top: 0.5rem;
+  left: 1rem;
+  font-size: 3rem;
+  color: #0dcc6c;
+  opacity: 0.3;
+  font-family: Georgia, serif;
+  line-height: 1;
+}
+
+.about-quote blockquote {
+  border: none;
+  margin: 0;
+  padding: 0;
+  padding-left: 1.5rem;
+  font-size: 1.1rem;
+  color: #444;
+}
+
+.about-footer-note {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #999;
+  margin-top: 2rem;
+}
+
+.about-footer-note a {
+  color: #888;
+}
+
+.about-footer-note a:hover {
+  color: #0dcc6c;
+}
+
+@media (max-width: 600px) {
+  .about-hero h2 {
+    font-size: 2rem;
+  }
+  
+  .about-hero-intro {
+    font-size: 1.3rem;
+  }
+  
+  .about-hero-avatar {
+    width: 56px;
+    height: 56px;
+  }
+  
+  .about-section {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .about-image-wrapper {
+    order: -1;
+  }
+  
+  .about-image-wrapper img {
+    max-width: 130px;
+  }
+  
+  .about-bio-content {
+    text-align: left;
+  }
+  
+  .about-links-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .about-cta-card {
+    padding: 1.5rem;
+  }
+}
+
+/* ============================================
    Footer
    ============================================ */
 #footer {
