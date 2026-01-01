@@ -302,7 +302,8 @@ function formatContentHeight(element) {
 					// Only use analytics if _paq is defined
 					if (typeof _paq !== 'undefined') {
 						_paq.push(["trackEvent", "postopen", thispage]);
-						const url = window.location.origin + thispage;
+						// Check if href is already absolute URL (static site) or relative (dev)
+						const url = thispage.startsWith('http') ? thispage : window.location.origin + thispage;
 						_paq.push(["setDocumentTitle", thispagetitle]);
 						_paq.push(["setCustomUrl", url]);
 						_paq.push(["trackPageView"]);
