@@ -425,6 +425,7 @@ function editor_create(container, submit_btn) {
 				"quote",
 				"unorderedlist",
 				"orderedlist",
+				"pre",
 			],
 		},
 		placeholder: false,

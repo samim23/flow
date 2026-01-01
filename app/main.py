@@ -87,8 +87,14 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 upload_path = Path(settings.local_upload_path)
 app.mount("/upload", StaticFiles(directory=upload_path), name="upload")
 
-# Set up templates
+# Set up templates (include analytics templates)
+from jinja2 import ChoiceLoader, FileSystemLoader
 templates = Jinja2Templates(directory="app/templates")
+# Add analytics templates directory to the loader
+templates.env.loader = ChoiceLoader([
+    FileSystemLoader("app/templates"),
+    FileSystemLoader("app/analytics/templates"),
+])
 
 # Add custom Jinja filters for SEO and image handling
 from app.utils import extract_all_images, get_content_stats
@@ -106,6 +112,20 @@ app.state.settings = settings
 
 # Include routes
 app.include_router(router)
+
+# Include analytics routes (optional - only if configured)
+try:
+    from app.analytics import is_analytics_enabled, get_analytics_router
+    if is_analytics_enabled():
+        app.include_router(get_analytics_router())
+        logger.info("Analytics module enabled")
+    else:
+        # Still include routes for dashboard access even without live Matomo
+        # This allows viewing cached/historical data
+        app.include_router(get_analytics_router())
+        logger.info("Analytics module loaded (Matomo not configured - using cached data only)")
+except ImportError as e:
+    logger.debug(f"Analytics module not available: {e}")
 
 # Register multiple exception handlers
 @app.exception_handler(StarletteHTTPException)

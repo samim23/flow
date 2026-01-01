@@ -99,5 +99,153 @@ def build_search_index():
         sys.exit(1)
 
 
+# ============================================================
+# Analytics Commands
+# ============================================================
+
+@cli.command()
+def analytics_sync():
+    """Sync analytics data from Matomo"""
+    try:
+        from app.analytics import is_analytics_enabled, get_analytics_store
+        
+        if not is_analytics_enabled():
+            click.echo("⚠️  Matomo not configured. Add these to your .env:")
+            click.echo("   MATOMO_URL=https://your-matomo-instance/")
+            click.echo("   MATOMO_SITE_ID=1")
+            click.echo("   MATOMO_TOKEN=your_auth_token")
+            return
+        
+        click.echo("🔄 Syncing analytics from Matomo...")
+        content_manager = ContentManager(settings.content_dir)
+        store = get_analytics_store()
+        updated = store.sync_from_matomo(content_manager)
+        click.echo(f"✓ Synced analytics for {updated} posts")
+        
+    except ImportError as e:
+        click.echo(f"Error: Analytics module not available: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command()
+def analytics_stats():
+    """Show analytics statistics"""
+    try:
+        from app.analytics import get_analytics_store, get_matomo_client
+        
+        store = get_analytics_store()
+        matomo = get_matomo_client()
+        
+        click.echo("\n📊 Analytics Statistics:")
+        click.echo(f"   Matomo configured: {'Yes' if matomo.is_configured else 'No'}")
+        
+        summary = store.get_stats_summary()
+        click.echo(f"\n   Local Data Store:")
+        click.echo(f"   ├── Posts tracked: {summary.get('posts_tracked', 0):,}")
+        click.echo(f"   ├── Tags tracked: {summary.get('tags_tracked', 0):,}")
+        click.echo(f"   ├── Total pageviews: {summary.get('total_pageviews', 0):,}")
+        click.echo(f"   └── Total visitors: {summary.get('total_visitors', 0):,}")
+        
+        last_sync = summary.get('last_sync')
+        if last_sync:
+            click.echo(f"\n   Last sync: {last_sync.strftime('%Y-%m-%d %H:%M')}")
+        
+        click.echo("")
+        
+    except ImportError as e:
+        click.echo(f"Error: Analytics module not available: {e}", err=True)
+
+
+@cli.command()
+def analytics_top():
+    """Show top performing posts"""
+    try:
+        from app.analytics import get_analytics_store
+        
+        store = get_analytics_store()
+        top_posts = store.get_top_posts(limit=15)
+        
+        if not top_posts:
+            click.echo("No analytics data. Run 'python flow.py analytics-sync' first.")
+            return
+        
+        click.echo("\n🔥 Top Performing Posts:\n")
+        for i, post in enumerate(top_posts, 1):
+            views = f"{post.total_pageviews:,}"
+            visitors = f"{post.total_visitors:,}"
+            title = (post.title[:50] + '...') if len(post.title) > 50 else post.title
+            click.echo(f"   {i:2}. {title}")
+            click.echo(f"       📊 {views} views | 👥 {visitors} visitors")
+        
+        click.echo("")
+        
+    except ImportError as e:
+        click.echo(f"Error: Analytics module not available: {e}", err=True)
+
+
+@cli.command()
+def analytics_ai_context():
+    """Generate AI context from analytics data"""
+    try:
+        from app.analytics import get_ai_context
+        
+        generator = get_ai_context()
+        context = generator.generate_context()
+        prompt = context.to_system_prompt()
+        
+        click.echo(prompt)
+        
+    except ImportError as e:
+        click.echo(f"Error: Analytics module not available: {e}", err=True)
+
+
+@cli.command()
+def analytics_insights():
+    """Show content insights and recommendations"""
+    try:
+        from app.analytics import get_insights_engine
+        
+        insights = get_insights_engine()
+        data = insights.get_comprehensive_insights()
+        
+        click.echo("\n💡 Content Insights:\n")
+        
+        # Title patterns
+        if data.get('title_patterns'):
+            click.echo("   ✍️  What works in titles:")
+            for pattern in data['title_patterns'][:3]:
+                click.echo(f"      • {pattern['description']}")
+        
+        # Tag trends
+        rising = [t for t in data.get('tag_trends', []) if t['direction'] == 'rising']
+        falling = [t for t in data.get('tag_trends', []) if t['direction'] == 'falling']
+        
+        if rising:
+            click.echo("\n   📈 Rising topics:")
+            for t in rising[:5]:
+                click.echo(f"      • #{t['tag']} (+{t['change']:.0f}%)")
+        
+        if falling:
+            click.echo("\n   📉 Declining topics:")
+            for t in falling[:3]:
+                click.echo(f"      • #{t['tag']} ({t['change']:.0f}%)")
+        
+        # Content gaps
+        if data.get('content_gaps'):
+            click.echo("\n   🎯 Content opportunities:")
+            for gap in data['content_gaps'][:5]:
+                click.echo(f"      • {gap['topic']}: {gap['reason']}")
+        
+        # Best posting time
+        timing = data.get('posting_times', {})
+        if timing.get('best_day'):
+            click.echo(f"\n   🕐 {timing['recommendation']}")
+        
+        click.echo("")
+        
+    except ImportError as e:
+        click.echo(f"Error: Analytics module not available: {e}", err=True)
+
+
 if __name__ == "__main__":
     cli()

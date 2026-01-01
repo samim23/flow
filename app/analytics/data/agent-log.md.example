@@ -1,0 +1,127 @@
+# 🧠 Content Optimizer Agent — World Model
+
+> This file is the agent's persistent memory and world model.
+> Update this at the end of every session.
+>
+> **Getting Started**: Copy this file to `agent-log.md` to start tracking.
+
+---
+
+# PART 1: CURRENT STATE
+
+## Status
+**Last Session**: [Date]  
+**Traffic**: [Brief summary]  
+
+## Goals (Prioritized)
+| Goal | Target | Current | Progress | Deadline |
+|------|--------|---------|----------|----------|
+| [Goal name] | [Number] | [Number] | [%] | [Date] |
+
+## Action Queue (Next Session)
+1. **[Priority/Timing]** [Action]
+2. **[Priority/Timing]** [Action]
+
+## Pending Observations
+| What | Check When | Expected Outcome |
+|------|------------|------------------|
+| [Experiment/post] | [Date] | [Expected result] |
+
+---
+
+# PART 2: BELIEFS (What We Think Is True)
+
+## High Confidence ✅
+| Belief | Evidence | Last Verified |
+|--------|----------|---------------|
+| [Belief] | [Data point] | [Date] |
+
+## Medium Confidence 🔶
+| Belief | Evidence | Needs |
+|--------|----------|-------|
+| [Belief] | [Partial evidence] | [What would confirm] |
+
+## Low Confidence / Hypotheses 🧪
+| Hypothesis | Being Tested By | Status |
+|------------|-----------------|--------|
+| [Hypothesis] | [Experiment name] | [Running/Pending] |
+
+## Disproven / Failed ❌
+| Belief | Why It Failed | Date |
+|--------|---------------|------|
+| [Former belief] | [Evidence against] | [Date] |
+
+---
+
+# PART 3: OPEN QUESTIONS
+
+Things we don't know yet and should investigate:
+
+- [ ] [Question to answer]
+- [ ] [Another question]
+
+---
+
+# PART 4: CAUSAL MODEL
+
+What we believe causes what:
+
+```
+[Cause] ──→ [Effect]
+[Cause] ──→ [Effect]
+```
+
+---
+
+# PART 5: AUDIENCE MODEL
+
+Who reads this site:
+
+- **Primary**: [Description]
+- **Secondary**: [Description]
+- **What they want**: [Needs]
+- **What they share**: [Shareable content types]
+
+---
+
+# PART 6: EXTERNAL CONTEXT
+
+World events and trends affecting content strategy:
+
+| Context | Relevance | Opportunity |
+|---------|-----------|-------------|
+| [Event/trend] | [High/Medium/Low] | [How to leverage] |
+
+---
+
+# PART 7: SOFT RULES (Evolving Tactics)
+
+| Rule | Status | Evidence | Last Evaluated |
+|------|--------|----------|----------------|
+| [Rule] | ✅/🧪/❌ | [Evidence] | [Date] |
+
+---
+
+# PART 8: SESSION HISTORY
+
+(Append new sessions below. Use this format:)
+
+## Session: YYYY-MM-DD
+
+**Trigger**: [What initiated this session]  
+**Duration**: [Time spent]
+
+### Data Analyzed
+[Summary of API calls and key findings]
+
+### Actions Taken
+| Action | Details |
+|--------|---------|
+| [Action] | [What was done] |
+
+### World Model Updates
+- [What beliefs changed]
+- [What was added to action queue]
+
+### Next Session Focus
+[Primary objective for next session]

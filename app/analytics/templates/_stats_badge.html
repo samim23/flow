@@ -1,0 +1,84 @@
+{# 
+  Stats badge partial - shows analytics for a single post
+  
+  Usage in templates:
+    {% include "analytics/_stats_badge.html" with context %}
+    
+  Required context:
+    - post_path: The post path (e.g., '2025-01-01-my-post')
+    
+  Optional context:
+    - show_details: Show expanded details (default: false)
+    - compact: Use compact layout (default: false)
+#}
+
+{% set show_details = show_details|default(false) %}
+{% set compact = compact|default(false) %}
+
+<div class="stats-badge {{ 'compact' if compact else '' }}" 
+     data-post-path="{{ post_path }}"
+     title="Click for details">
+  <span class="stats-loading">📊</span>
+  <span class="stats-views" style="display: none;">
+    <span class="view-count">—</span>
+    <span class="view-label">{{ 'v' if compact else 'views' }}</span>
+  </span>
+  {% if show_details %}
+  <span class="stats-visitors" style="display: none;">
+    <span class="visitor-count">—</span>
+    <span class="visitor-label">visitors</span>
+  </span>
+  <span class="stats-time" style="display: none;">
+    <span class="time-value">—</span>
+    <span class="time-label">avg</span>
+  </span>
+  {% endif %}
+</div>
+
+<style>
+.stats-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: #f5f5f5;
+  border-radius: 20px;
+  font-size: 0.85em;
+  color: #666;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.stats-badge:hover {
+  background: #e8e8e8;
+}
+
+.stats-badge.compact {
+  padding: 2px 8px;
+  font-size: 0.75em;
+  gap: 4px;
+}
+
+.stats-badge .view-count,
+.stats-badge .visitor-count,
+.stats-badge .time-value {
+  font-weight: 600;
+  color: #333;
+}
+
+.stats-badge .view-label,
+.stats-badge .visitor-label,
+.stats-badge .time-label {
+  color: #888;
+}
+
+.stats-loading {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+</style>
+

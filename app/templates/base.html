@@ -111,6 +111,7 @@
   <script src="{{ request.url_for('static', path='js/vendor/medium-editor-insert-plugin.min.js') }}"> </script>
   <script src="{{ request.url_for('static', path='js/vendor/autolist.min.js') }}"></script>
   <script src="{{ request.url_for('static', path='js/main.js') }}"></script>
+  <script src="{{ request.url_for('static', path='js/analytics-stats.js') }}"></script>
   {%- endif %}
 
   {# === JSON-LD Structured Data === #}
@@ -228,6 +229,7 @@
       {%- else -%}
       <nav id="editor_tools">
         <div class="post_static" data-jq-dropdown="#jq-dropdown-publish" data-horizontal-offset="6" class="post_dropdown"><a title="Deploy to live site" href="/"><i class="fa fa-bolt search_icon"></i>deploy</a></div>
+        <div class="post_static"><a title="Analytics Dashboard" href="/analytics/">analytics</a></div>
         <div class="post_static"><a title="search" href="{{ request.url_for('search') }}"><i class="fa fa-search search_icon"></i>search</a></div>
         <div class="post_static"><a title="tag" href="{{ request.url_for('tags') }}">tag</a></div>
         <div class="post_static"><a title="about" href="{{ request.url_for('page', path='about') }}">about</a></div>

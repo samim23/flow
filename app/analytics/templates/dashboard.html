@@ -1,0 +1,1563 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="analytics-dashboard">
+  <header class="analytics-header">
+    <h1 class="page_title">Analytics</h1>
+    <div class="analytics-actions">
+      <div class="date-range-selector">
+        {% for key, info in date_ranges.items() %}
+        <a href="?range={{ key }}" class="range-btn {% if current_range == key %}active{% endif %}">
+          {{ info.label }}
+        </a>
+        {% endfor %}
+      </div>
+      <button id="sync-btn" class="btn btn-primary" onclick="syncAnalytics()">
+        🔄 Sync from Matomo
+      </button>
+      {% if last_sync %}
+      <span class="last-sync">Last sync: {{ last_sync.strftime('%Y-%m-%d %H:%M') if last_sync else 'Never' }}</span>
+      {% endif %}
+    </div>
+  </header>
+
+  {% if not is_configured %}
+  <div class="analytics-notice">
+    <h3>⚠️ Matomo Not Configured</h3>
+    <p>To enable live analytics, add these settings to your <code>.env</code> file:</p>
+    <pre>
+MATOMO_URL=https://your-matomo-instance/
+MATOMO_SITE_ID=1
+MATOMO_TOKEN=your_auth_token</pre>
+    <p>You can still view cached analytics data below.</p>
+  </div>
+  {% endif %}
+
+  <!-- Quick Stats -->
+  {% if summary %}
+  <section class="analytics-section">
+    <h2>📈 {{ date_ranges[current_range].label }}</h2>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-value">{{ "{:,}".format(summary.total_visits) }}</span>
+        <span class="stat-label">Visits</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{% if summary.unique_visitors > 0 %}{{ "{:,}".format(summary.unique_visitors) }}{% else %}N/A{% endif %}</span>
+        <span class="stat-label">Unique Visitors{% if summary.unique_visitors == 0 %} <a href="https://matomo.org/faq/how-to/faq_113/" target="_blank" title="Requires Matomo configuration">ⓘ</a>{% endif %}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ "{:,}".format(summary.total_pageviews) }}</span>
+        <span class="stat-label">Pageviews</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ "%.1f"|format(summary.avg_visit_duration / 60) }}m</span>
+        <span class="stat-label">Avg Duration</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ "%.1f"|format(summary.bounce_rate) }}%</span>
+        <span class="stat-label">Bounce Rate</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ "%.1f"|format(summary.pages_per_visit) }}</span>
+        <span class="stat-label">Pages/Visit</span>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Experiments & Goals -->
+  <div class="experiments-goals-row">
+    <!-- Active Experiments -->
+    <section class="analytics-section experiments-section">
+      <div class="section-header">
+        <h2>🧪 Experiments</h2>
+        <a href="file:///{{ experiments[0].path if experiments else '' }}" class="edit-link" title="Edit in IDE">📁 app/analytics/data/experiments/</a>
+      </div>
+      {% if experiments %}
+      <div class="experiments-list">
+        {% for exp in experiments %}
+        <div class="experiment-card {{ exp.status }}">
+          <div class="exp-header">
+            <span class="exp-status {{ exp.status }}">{{ exp.status }}</span>
+            <span class="exp-title">{{ exp.title }}</span>
+          </div>
+          <div class="exp-hypothesis">{{ exp.hypothesis }}</div>
+          {% if exp.status == 'completed' and exp.results_summary %}
+          <div class="exp-results">
+            <strong>Result:</strong> {{ exp.results_summary }}
+          </div>
+          {% endif %}
+          <div class="exp-meta">
+            {% if exp.status == 'running' and exp.days_running > 0 %}
+            <span>Day {{ exp.days_running }}</span>
+            {% endif %}
+            <span>{{ exp.posts|length }} posts</span>
+            {% if exp.track_metrics %}
+            <span>Tracking: {{ exp.track_metrics|join(', ') }}</span>
+            {% endif %}
+            {% if exp.status == 'completed' %}
+            <span class="exp-outcome {% if exp.winner %}winner{% endif %}">
+              {% if exp.winner == 'treatment' %}✓ Treatment won{% elif exp.winner == 'control' %}✗ Control won{% else %}Completed{% endif %}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="no-data">
+        <p>No experiments yet.</p>
+        <p class="hint">Create markdown files in <code>app/analytics/data/experiments/</code></p>
+      </div>
+      {% endif %}
+    </section>
+
+    <!-- Goals -->
+    <section class="analytics-section goals-section">
+      <div class="section-header">
+        <h2>🎯 Goals</h2>
+        <a href="file:///{{ goals[0].path if goals else '' }}" class="edit-link" title="Edit in IDE">📁 app/analytics/data/goals/</a>
+      </div>
+      {% if goals %}
+      <div class="goals-list">
+        {% for goal in goals %}
+        <div class="goal-card {{ goal.status }} priority-{{ goal.priority }}">
+          <div class="goal-header">
+            <span class="goal-priority {{ goal.priority }}">{{ goal.priority }}</span>
+            <span class="goal-title">{{ goal.title }}</span>
+          </div>
+          <div class="goal-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: {{ goal.progress_percent|int }}%"></div>
+            </div>
+            <span class="progress-text">{{ "{:,.0f}".format(goal.current_value) }} / {{ "{:,.0f}".format(goal.target_value) }} ({{ goal.progress_percent|int }}%)</span>
+          </div>
+          <div class="goal-meta">
+            <span class="goal-metric">{{ goal.target_metric }}</span>
+            {% if goal.days_remaining >= 0 %}
+            <span class="goal-deadline">{{ goal.days_remaining }} days left</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="no-data">
+        <p>No goals yet.</p>
+        <p class="hint">Create markdown files in <code>app/analytics/data/goals/</code></p>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <!-- Recommended Actions - Prioritized and actionable -->
+  {% if recommendations or trending_content %}
+  <section class="analytics-section recommended-actions">
+    <h2>⚡ Recommended Actions</h2>
+    
+    {% if prioritized_actions %}
+    <div class="actions-list">
+      {% for action in prioritized_actions %}
+      <div class="action-item priority-{{ action.priority }}">
+        <div class="action-priority">{{ action.priority|upper }}</div>
+        <div class="action-content">
+          <div class="action-text">{{ action.action }}</div>
+          <div class="action-reason">{{ action.reason }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% elif recommendations %}
+    <div class="recommendations-list">
+      {% for rec in recommendations %}
+      <div class="recommendation-item">{{ rec }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if trending_content %}
+    <div class="trending-section">
+      <h3>🔥 Trending Now</h3>
+      <div class="trending-list">
+        {% for item in trending_content[:5] %}
+        <div class="trending-item">
+          <span class="momentum">{{ item.momentum }}</span>
+          <a href="/p/{{ item.path }}/">{{ item.label[:50] }}{% if item.label|length > 50 %}...{% endif %}</a>
+          <span class="change">{{ item.change_percent|int }}%↑</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    
+    {% if search_keywords %}
+    <div class="keywords-section">
+      <h3>🔍 Search Keywords</h3>
+      <div class="keywords-list">
+        {% for kw in search_keywords[:8] if kw.keyword and kw.keyword != 'Keyword not defined' %}
+        <span class="keyword-tag">{{ kw.keyword }} <small>({{ kw.visits }})</small></span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <!-- NEW: Traffic Sources Section -->
+  {% if referrer_types or social_networks %}
+  <section class="analytics-section traffic-sources">
+    <h2>🔗 Traffic Sources</h2>
+    <div class="sources-grid">
+      {% if referrer_types %}
+      <div class="referrer-breakdown">
+        <h3>📊 Traffic Breakdown</h3>
+        <div class="referrer-bars">
+          {% for type, data in referrer_types.items() %}
+          <div class="referrer-bar">
+            <div class="bar-label">{{ type }}</div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width: {{ data.percentage }}%"></div>
+            </div>
+            <div class="bar-value">{{ "{:,}".format(data.visits) }} ({{ data.percentage }}%)</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      
+      {% if social_networks %}
+      <div class="social-breakdown">
+        <h3>📱 Social Networks</h3>
+        <div class="social-list">
+          {% for social in social_networks[:5] %}
+          <div class="social-item">
+            <span class="social-name">{{ social.network }}</span>
+            <span class="social-visits">{{ "{:,}".format(social.visits) }} visits</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      
+      {% if referring_websites %}
+      <div class="websites-breakdown">
+        <h3>🌐 Top Referring Sites</h3>
+        <div class="websites-list">
+          {% for site in referring_websites[:5] %}
+          <div class="website-item">
+            <span class="website-name">{{ site.website }}</span>
+            <span class="website-visits">{{ "{:,}".format(site.visits) }} visits</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+  
+  <!-- NEW: Historical Trends Chart -->
+  {% if monthly_trends and monthly_trends|length > 1 %}
+  <section class="analytics-section historical-trends">
+    <h2>📈 12-Month Traffic Trend</h2>
+    <div class="trend-chart">
+      {% set max_visits = (monthly_trends | map(attribute='visits') | max) or 1 %}
+      {% for month in monthly_trends %}
+      <div class="chart-bar" style="height: {{ (month.visits / max_visits * 100)|int }}%">
+        <span class="bar-tooltip">{{ "{:,}".format(month.visits) }}</span>
+        <span class="bar-month">{{ month.month[-2:] }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+  
+  <!-- NEW: Content Success Patterns -->
+  {% if content_correlations and not content_correlations.get('error') %}
+  <section class="analytics-section success-patterns">
+    <h2>🎯 What Makes Posts Successful</h2>
+    <div class="patterns-grid">
+      {% if content_correlations.title_length %}
+      <div class="pattern-card">
+        <h3>📏 Title Length</h3>
+        <p>{{ content_correlations.title_length.insight }}</p>
+      </div>
+      {% endif %}
+      
+      {% if content_correlations.engagement %}
+      <div class="pattern-card">
+        <h3>⏱️ Engagement</h3>
+        <p>{{ content_correlations.engagement.insight }}</p>
+      </div>
+      {% endif %}
+      
+      {% if content_correlations.best_tags %}
+      <div class="pattern-card">
+        <h3>🏆 Best Performing Tags</h3>
+        <div class="tag-performance">
+          {% for tag in content_correlations.best_tags %}
+          <span class="perf-tag good">#{{ tag.tag }} <small>({{ "{:,}".format(tag.avg_views) }} avg)</small></span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      
+      {% if content_correlations.worst_tags %}
+      <div class="pattern-card">
+        <h3>📉 Lower Performing Tags</h3>
+        <div class="tag-performance">
+          {% for tag in content_correlations.worst_tags %}
+          <span class="perf-tag low">#{{ tag.tag }} <small>({{ "{:,}".format(tag.avg_views) }} avg)</small></span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      
+      {% if content_correlations.successful_title_words %}
+      <div class="pattern-card full-width">
+        <h3>💡 Words in Successful Titles</h3>
+        <div class="word-cloud">
+          {% for word in content_correlations.successful_title_words %}
+          <span class="success-word">{{ word }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="analytics-columns">
+    <!-- Top Posts -->
+    <section class="analytics-section">
+      <h2>🔥 Top Posts</h2>
+      {% if top_posts %}
+      <div class="top-posts-list">
+        {% for post in top_posts[:10] %}
+        <div class="top-post-item">
+          <div class="post-row">
+            <a href="/p/{{ post.path }}/" class="post-title">{{ post.title or post.path }}</a>
+            <a href="/analytics/post/{{ post.path }}" class="post-detail-link" title="View detailed analytics">📊</a>
+          </div>
+          <div class="post-stats">
+            <span class="views">{{ "{:,}".format(post.total_pageviews) }} views</span>
+            <span class="visitors">{{ "{:,}".format(post.total_visitors) }} visitors</span>
+            {% if post.avg_time_on_page > 0 %}
+            <span class="time">{{ "%.0f"|format(post.avg_time_on_page) }}s avg</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="no-data">No post data yet. Click "Sync from Matomo" to fetch data.</p>
+      {% endif %}
+    </section>
+
+    <!-- Top Tags -->
+    <section class="analytics-section">
+      <h2>🏷️ Top Tags</h2>
+      {% if top_tags %}
+      <div class="tags-list">
+        {% for tag in top_tags[:10] %}
+        <div class="tag-item">
+          <a href="/tag/{{ tag.tag }}/" class="tag-name">#{{ tag.tag }}</a>
+          <div class="tag-stats">
+            <span>{{ "{:,}".format(tag.total_pageviews) }} views</span>
+            <span>{{ tag.post_count }} posts</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="no-data">No tag data available.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <!-- Tag Trends -->
+  {% if tag_trends %}
+  <section class="analytics-section">
+    <h2>📊 Tag Trends (30 days)</h2>
+    <div class="trends-grid">
+      {% for trend in tag_trends %}
+      <div class="trend-item {{ trend.direction }}">
+        <span class="trend-tag">#{{ trend.name }}</span>
+        <span class="trend-change">
+          {% if trend.direction == 'rising' %}📈{% else %}📉{% endif %}
+          {{ "%+.0f"|format(trend.change_percent) }}%
+        </span>
+        <span class="trend-views">{{ trend.current_views }} views</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Countries (from live summary) -->
+  {% if summary and summary.top_countries %}
+  <section class="analytics-section">
+    <h2>🌍 Top Countries</h2>
+    <div class="countries-grid">
+      {% for country in summary.top_countries[:8] %}
+      <div class="country-item">
+        <span class="country-flag">{{ country.country_code }}</span>
+        <span class="country-name">{{ country.country_name }}</span>
+        <span class="country-visits">{{ "{:,}".format(country.visits) }} visits</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="analytics-columns">
+    <!-- Content Gaps -->
+    {% if content_gaps %}
+    <section class="analytics-section">
+      <h2>💡 Content Opportunities</h2>
+      <div class="gaps-list">
+        {% for gap in content_gaps %}
+        <div class="gap-item {{ gap.potential_value }}">
+          <span class="gap-topic">{{ gap.topic }}</span>
+          <span class="gap-reason">{{ gap.reason }}</span>
+          <span class="gap-value">{{ gap.potential_value }} potential</span>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Title Patterns -->
+    {% if title_patterns %}
+    <section class="analytics-section">
+      <h2>✍️ What Works</h2>
+      <div class="patterns-list">
+        {% for pattern in title_patterns %}
+        <div class="pattern-item">
+          <span class="pattern-name">{{ pattern.name.replace('_', ' ').title() }}</span>
+          <span class="pattern-desc">{{ pattern.description }}</span>
+          <div class="pattern-impact">
+            <div class="impact-bar" style="width: {{ pattern.impact_score * 100 }}%"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+  </div>
+
+  <!-- Benchmarks -->
+  {% if benchmarks and not benchmarks.get('insufficient_data') %}
+  <section class="analytics-section">
+    <h2>📏 Performance Benchmarks</h2>
+    <div class="benchmarks-grid">
+      <div class="benchmark-card">
+        <h4>Pageviews</h4>
+        <div class="benchmark-stats">
+          <div><label>Median:</label> {{ "%.0f"|format(benchmarks.pageviews.median) }}</div>
+          <div><label>Top 25%:</label> {{ "%.0f"|format(benchmarks.pageviews.top_25) }}</div>
+          <div><label>Top 10%:</label> {{ "%.0f"|format(benchmarks.pageviews.top_10) }}</div>
+        </div>
+      </div>
+      {% if benchmarks.time_on_page.average > 0 %}
+      <div class="benchmark-card">
+        <h4>Time on Page</h4>
+        <div class="benchmark-stats">
+          <div><label>Median:</label> {{ "%.0f"|format(benchmarks.time_on_page.median) }}s</div>
+          <div><label>Top 25%:</label> {{ "%.0f"|format(benchmarks.time_on_page.top_25) }}s</div>
+          <div><label>Average:</label> {{ "%.0f"|format(benchmarks.time_on_page.average) }}s</div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Publishing Timing -->
+  {% if timing and not timing.get('insufficient_data') %}
+  <section class="analytics-section">
+    <h2>🕐 Best Publishing Times</h2>
+    {% if timing.best_day %}
+    <p class="timing-recommendation">
+      📅 {{ timing.recommendation }}
+    </p>
+    {% endif %}
+    {% if timing.by_weekday %}
+    <div class="weekday-grid">
+      {% for day, stats in timing.by_weekday.items() %}
+      <div class="weekday-item {{ 'best' if day == timing.best_day else '' }}">
+        <span class="day-name">{{ day[:3] }}</span>
+        <span class="day-avg">{{ "%.0f"|format(stats.avg_views) }} avg views</span>
+        <span class="day-count">{{ stats.post_count }} posts</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <!-- AI Context -->
+  <section class="analytics-section">
+    <h2>🤖 AI Context</h2>
+    <p>Use this context to help AI understand your blog's performance:</p>
+    <div class="ai-context-actions">
+      <button class="btn" onclick="copyAIContext()">📋 Copy AI Prompt</button>
+      <button class="btn" onclick="showAIContext()">👁️ View Context</button>
+    </div>
+    <pre id="ai-context-display" style="display: none; max-height: 400px; overflow: auto;"></pre>
+  </section>
+
+  <!-- Store Summary -->
+  <section class="analytics-section analytics-footer">
+    <h3>📦 Data Store</h3>
+    <div class="store-stats">
+      <span>{{ store_summary.posts_tracked }} posts tracked</span>
+      <span>{{ store_summary.tags_tracked }} tags</span>
+      <span>{{ "{:,}".format(store_summary.total_pageviews) }} total pageviews</span>
+    </div>
+  </section>
+</div>
+
+<style>
+.analytics-dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0px;
+}
+
+/* Recommended Actions */
+.recommended-actions h2 {
+  color: #FF9800;
+}
+
+.actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.action-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  padding: 12px 15px;
+  border-left: 4px solid #ddd;
+}
+
+.action-item.priority-high {
+  border-left-color: #f44336;
+  background: #fff5f5;
+}
+
+.action-item.priority-medium {
+  border-left-color: #FF9800;
+  background: #fff8e1;
+}
+
+.action-item.priority-low {
+  border-left-color: #4CAF50;
+  background: #f5fff5;
+}
+
+.action-priority {
+  font-size: 0.7em;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #666;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.action-item.priority-high .action-priority {
+  background: #f44336;
+}
+
+.action-item.priority-medium .action-priority {
+  background: #FF9800;
+}
+
+.action-item.priority-low .action-priority {
+  background: #4CAF50;
+}
+
+.action-content {
+  flex: 1;
+}
+
+.action-text {
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.action-reason {
+  font-size: 0.85em;
+  color: #666;
+}
+
+/* Experiment Results */
+.exp-results {
+  background: #e3f2fd;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  margin: 8px 0;
+  color: #1565c0;
+}
+
+.exp-outcome {
+  font-weight: 500;
+}
+
+.exp-outcome.winner {
+  color: #2e7d32;
+}
+
+.analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 0px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.analytics-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.date-range-selector {
+  display: flex;
+  gap: 4px;
+  background: #f0f0f0;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.range-btn {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: #666;
+  text-decoration: none;
+  font-size: 0.85em;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.range-btn:hover {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.range-btn.active {
+  background: #4CAF50;
+  color: white;
+}
+
+.last-sync {
+  font-size: 0.85em;
+  color: #888;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.btn-primary {
+  background: #4CAF50;
+  color: white;
+  border-color: #4CAF50;
+}
+
+.btn-primary:hover {
+  background: #45a049;
+}
+
+.analytics-notice {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.analytics-notice h3 {
+  margin-top: 0;
+  color: #856404;
+}
+
+.analytics-notice pre {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.analytics-section {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.analytics-section h2 {
+  margin-top: 0;
+  font-size: 1.25em;
+  color: #333;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+}
+
+.stat-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 2em;
+  font-weight: bold;
+  color: #333;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.85em;
+  color: #666;
+  margin-top: 5px;
+}
+
+.analytics-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.top-posts-list, .tags-list, .gaps-list, .patterns-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.top-post-item, .tag-item, .gap-item, .pattern-item {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.post-title, .tag-name {
+  font-weight: 500;
+  color: #333;
+  text-decoration: none;
+}
+
+.post-title:hover, .tag-name:hover {
+  color: #4CAF50;
+}
+
+.post-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.post-detail-link {
+  font-size: 1.1em;
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.post-detail-link:hover {
+  opacity: 1;
+}
+
+.post-stats, .tag-stats {
+  display: flex;
+  gap: 15px;
+  font-size: 0.85em;
+  color: #666;
+  margin-top: 5px;
+}
+
+.trends-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.trend-item {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  border-radius: 6px;
+  background: #f8f9fa;
+}
+
+.trend-item.rising {
+  background: #e8f5e9;
+  border-left: 3px solid #4CAF50;
+}
+
+.trend-item.falling {
+  background: #ffebee;
+  border-left: 3px solid #f44336;
+}
+
+.trend-tag {
+  font-weight: 500;
+}
+
+.trend-change {
+  font-size: 1.1em;
+}
+
+.countries-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.country-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.country-flag {
+  font-size: 1.5em;
+  text-transform: uppercase;
+}
+
+.gap-item {
+  border-left: 3px solid #2196F3;
+}
+
+.gap-item.high {
+  border-left-color: #4CAF50;
+}
+
+.gap-item.medium {
+  border-left-color: #FFC107;
+}
+
+.gap-topic {
+  font-weight: 500;
+}
+
+.gap-reason {
+  font-size: 0.9em;
+  color: #666;
+}
+
+.gap-value {
+  font-size: 0.8em;
+  color: #888;
+  text-transform: capitalize;
+}
+
+.pattern-impact {
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  margin-top: 8px;
+}
+
+.impact-bar {
+  height: 100%;
+  background: #4CAF50;
+  border-radius: 2px;
+}
+
+.benchmarks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.benchmark-card {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 6px;
+}
+
+.benchmark-card h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+}
+
+.benchmark-stats div {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 0.9em;
+}
+
+.benchmark-stats label {
+  color: #666;
+}
+
+.timing-recommendation {
+  font-size: 1.1em;
+  color: #4CAF50;
+  margin-bottom: 15px;
+}
+
+.weekday-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+.weekday-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.85em;
+}
+
+.weekday-item.best {
+  background: #e8f5e9;
+  border: 2px solid #4CAF50;
+}
+
+.day-name {
+  font-weight: bold;
+}
+
+.ai-context-actions {
+  display: flex;
+  gap: 10px;
+  margin: 15px 0;
+}
+
+#ai-context-display {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 15px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.85em;
+  white-space: pre-wrap;
+}
+
+.analytics-footer {
+  background: #f8f9fa;
+}
+
+.store-stats {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.store-stats span {
+  color: #666;
+}
+
+.no-data {
+  color: #888;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .analytics-columns {
+    grid-template-columns: 1fr;
+  }
+  
+  .weekday-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* AI Insights Section - Clean design */
+.ai-insights {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+}
+
+.traffic-trend {
+  padding: 12px 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8f9fa;
+}
+
+.trend-up {
+  border-left: 3px solid #4caf50;
+}
+
+.trend-down {
+  border-left: 3px solid #f44336;
+}
+
+.trend-icon {
+  font-size: 1.2em;
+}
+
+.recommendations-list {
+  margin-bottom: 15px;
+}
+
+.recommendation-item {
+  background: #f8f9fa;
+  padding: 10px 15px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  font-size: 0.9em;
+  border-left: 3px solid #e5e5e5;
+}
+
+.trending-section, .keywords-section {
+  margin-top: 15px;
+}
+
+.trending-section h3, .keywords-section h3 {
+  font-size: 1em;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.trending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.trending-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8f9fa;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.trending-item a {
+  color: #333;
+  text-decoration: none;
+  flex: 1;
+}
+
+.trending-item a:hover {
+  text-decoration: underline;
+}
+
+.trending-item .momentum {
+  font-size: 1.1em;
+}
+
+.trending-item .change {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+}
+
+.keywords-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.keyword-tag {
+  background: #f8f9fa;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85em;
+  border: 1px solid #e5e5e5;
+}
+
+.keyword-tag small {
+  color: #666;
+}
+
+/* Traffic Sources Section - Clean design */
+.traffic-sources {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+}
+
+.sources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.referrer-breakdown, .social-breakdown, .websites-breakdown {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.referrer-breakdown h3, .social-breakdown h3, .websites-breakdown h3 {
+  margin-top: 0;
+  font-size: 1em;
+  color: #333;
+}
+
+.referrer-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.referrer-bar {
+  display: grid;
+  grid-template-columns: 80px 1fr 100px;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9em;
+}
+
+.bar-label {
+  color: #666;
+}
+
+.bar-track {
+  height: 10px;
+  background: #e5e5e5;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: #333;
+  border-radius: 5px;
+}
+
+.bar-value {
+  font-size: 0.85em;
+  text-align: right;
+  color: #666;
+}
+
+.social-list, .websites-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.social-item, .website-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #e5e5e5;
+  font-size: 0.9em;
+}
+
+.social-item:last-child, .website-item:last-child {
+  border-bottom: none;
+}
+
+/* Historical Trends Chart - Clean design */
+.historical-trends {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+}
+
+.trend-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 120px;
+  padding: 15px 0;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.chart-bar {
+  flex: 1;
+  background: #333;
+  border-radius: 3px 3px 0 0;
+  position: relative;
+  min-height: 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.bar-tooltip {
+  position: absolute;
+  top: -22px;
+  font-size: 0.7em;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: #333;
+}
+
+.chart-bar:hover .bar-tooltip {
+  opacity: 1;
+}
+
+.chart-bar:hover {
+  background: #666;
+}
+
+.bar-month {
+  font-size: 0.65em;
+  margin-top: 5px;
+  color: #666;
+}
+
+/* Success Patterns Section - Clean design */
+.success-patterns {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+}
+
+.patterns-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.pattern-card {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.pattern-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.pattern-card h3 {
+  margin-top: 0;
+  font-size: 1em;
+  color: #333;
+}
+
+.pattern-card p {
+  margin: 0;
+  font-size: 0.9em;
+  color: #666;
+}
+
+.tag-performance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.perf-tag {
+  padding: 4px 10px;
+  border-radius: 15px;
+  font-size: 0.8em;
+}
+
+.perf-tag.good {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.perf-tag.low {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.word-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.success-word {
+  background: #f8f9fa;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.9em;
+  border: 1px solid #e5e5e5;
+}
+
+/* Experiments & Goals Row */
+.experiments-goals-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.experiments-section, .goals-section {
+  min-height: 200px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+}
+
+.section-header h2 {
+  margin: 0;
+  border: none;
+  padding: 0;
+}
+
+.edit-link {
+  font-size: 0.8em;
+  color: #888;
+  text-decoration: none;
+}
+
+.edit-link:hover {
+  color: #4CAF50;
+}
+
+/* Experiment Cards */
+.experiments-list, .goals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.experiment-card, .goal-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  border-left: 4px solid #ddd;
+}
+
+.experiment-card.running {
+  border-left-color: #4CAF50;
+}
+
+.experiment-card.completed {
+  border-left-color: #2196F3;
+}
+
+.experiment-card.cancelled {
+  border-left-color: #f44336;
+  opacity: 0.7;
+}
+
+.exp-header, .goal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.exp-status, .goal-priority {
+  font-size: 0.75em;
+  padding: 2px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.exp-status.running {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.exp-status.completed {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.exp-status.cancelled {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.goal-priority.high {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.goal-priority.medium {
+  background: #fff8e1;
+  color: #f9a825;
+}
+
+.goal-priority.low {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.exp-title, .goal-title {
+  font-weight: 600;
+  color: #333;
+}
+
+.exp-hypothesis {
+  font-size: 0.9em;
+  color: #666;
+  font-style: italic;
+  margin-bottom: 10px;
+}
+
+.exp-meta, .goal-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8em;
+  color: #888;
+}
+
+/* Goal Progress Bar */
+.goal-progress {
+  margin: 10px 0;
+}
+
+.progress-bar {
+  background: #e0e0e0;
+  border-radius: 4px;
+  height: 8px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.progress-fill {
+  background: #4CAF50;
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 0.85em;
+  color: #666;
+}
+
+.goal-metric {
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.goal-deadline {
+  color: #f9a825;
+}
+
+.goal-card.achieved .progress-fill {
+  background: #2196F3;
+}
+
+.goal-card.missed .progress-fill {
+  background: #f44336;
+}
+
+/* No data hint */
+.no-data .hint {
+  font-size: 0.85em;
+  color: #888;
+  margin-top: 8px;
+}
+
+.no-data code {
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+</style>
+
+<script>
+async function syncAnalytics() {
+  const btn = document.getElementById('sync-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Syncing...';
+  
+  try {
+    const response = await fetch('/analytics/sync');
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      alert(data.message);
+      location.reload();
+    } else {
+      alert('Sync failed: ' + data.message);
+    }
+  } catch (e) {
+    alert('Sync failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔄 Sync from Matomo';
+  }
+}
+
+async function copyAIContext() {
+  try {
+    const response = await fetch('/analytics/api/ai-context?format=prompt');
+    const data = await response.json();
+    await navigator.clipboard.writeText(data.prompt);
+    alert('AI context copied to clipboard!');
+  } catch (e) {
+    alert('Failed to copy: ' + e.message);
+  }
+}
+
+async function showAIContext() {
+  const display = document.getElementById('ai-context-display');
+  
+  if (display.style.display !== 'none') {
+    display.style.display = 'none';
+    return;
+  }
+  
+  try {
+    const response = await fetch('/analytics/api/ai-context?format=prompt');
+    const data = await response.json();
+    display.textContent = data.prompt;
+    display.style.display = 'block';
+  } catch (e) {
+    display.textContent = 'Failed to load: ' + e.message;
+    display.style.display = 'block';
+  }
+}
+</script>
+{% endblock content %}
+

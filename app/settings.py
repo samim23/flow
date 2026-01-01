@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     
     # Build settings
     build_search_index: bool = False  # Auto-build Pagefind search index (requires Node.js)
+    
+    # Analytics settings (optional - enables analytics dashboard and AI context)
+    # To get your Matomo token: Matomo → Settings → Personal → Security → Auth Tokens
+    matomo_url: str = ""  # e.g., "https://samim.io/MatomoStats/"
+    matomo_site_id: int = 1
+    matomo_token: str = ""  # Your Matomo auth token
+    analytics_cache_hours: int = 1  # How long to cache analytics data
 
     # Authentication (set admin_password to enable live mode with login)
     admin_password: str = ""  # Leave empty for local dev mode, set for live server

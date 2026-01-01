@@ -16,3 +16,5 @@ gunicorn==21.2.0
 markdown2==2.4.10
 watchdog==6.0.0
 Pillow>=10.0.0
+requests>=2.31.0
+httpx>=0.25.0

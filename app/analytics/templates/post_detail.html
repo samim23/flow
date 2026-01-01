@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="analytics-dashboard post-detail-view">
+  <header class="analytics-header">
+    <h1 class="page_title">📊 Post Analytics</h1>
+    <a href="/analytics/" class="back-link">← Back to Dashboard</a>
+  </header>
+
+  <!-- Post Info -->
+  <section class="analytics-section post-info">
+    <h2>{{ post.title or post.path }}</h2>
+    <div class="post-meta">
+      <a href="/p/{{ post.path }}/" class="view-post">View Post →</a>
+      {% if post.date_published %}
+      <span class="publish-date">Published: {{ post.date_published }}</span>
+      {% endif %}
+      {% if post.tags %}
+      <div class="post-tags">
+        {% for tag in post.tags %}
+        <span class="tag">#{{ tag }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Performance Stats -->
+  <section class="analytics-section">
+    <h2>📈 Performance</h2>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-value">{{ "{:,}".format(post.total_pageviews) }}</span>
+        <span class="stat-label">Total Pageviews</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ "{:,}".format(post.total_visitors) }}</span>
+        <span class="stat-label">Unique Visitors</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ "%.0f"|format(post.avg_time_on_page) }}s</span>
+        <span class="stat-label">Avg Time on Page</span>
+      </div>
+      {% if post.date_published %}
+      <div class="stat-card">
+        <span class="stat-value">{{ post.date_published.strftime('%Y-%m-%d') if post.date_published else 'N/A' }}</span>
+        <span class="stat-label">Published</span>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Referrers -->
+  {% if referrers %}
+  <section class="analytics-section">
+    <h2>🔗 Traffic Sources</h2>
+    <div class="referrers-list">
+      {% for ref in referrers %}
+      <div class="referrer-item">
+        <span class="referrer-name">{{ ref.referrer }}</span>
+        <span class="referrer-visits">{{ ref.visits }} visits</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Historical Trend -->
+  {% if history %}
+  <section class="analytics-section">
+    <h2>📅 Traffic Over Time</h2>
+    <div class="trend-chart post-trend">
+      {% set max_views = (history | map(attribute='pageviews') | max) or 1 %}
+      {% for month in history %}
+      <div class="chart-bar" style="height: {{ (month.pageviews / max_views * 100)|int }}%">
+        <span class="bar-tooltip">{{ "{:,}".format(month.pageviews) }}</span>
+        <span class="bar-month">{{ month.month[-2:] }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="lifecycle-indicator {{ lifecycle }}">
+      {% if lifecycle == 'growing' %}
+      📈 Growing - Traffic is increasing over time
+      {% elif lifecycle == 'declining' %}
+      📉 Declining - Traffic peaked and is decreasing
+      {% else %}
+      ➡️ Stable
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Comparison to Average -->
+  {% if benchmarks %}
+  <section class="analytics-section">
+    <h2>📏 Compared to Average</h2>
+    <div class="comparison-grid">
+      <div class="comparison-item">
+        <span class="metric-name">Pageviews</span>
+        <div class="comparison-bar">
+          {% set pv_ratio = (post.total_pageviews / benchmarks.pageviews.median * 100)|int if benchmarks.pageviews.median > 0 else 0 %}
+          {% set pv_width = pv_ratio if pv_ratio < 200 else 200 %}
+          <div class="bar-fill {% if pv_ratio > 100 %}above{% else %}below{% endif %}" 
+               style="width: {{ pv_width }}%"></div>
+          <span class="bar-marker" style="left: 100%">Median</span>
+        </div>
+        <span class="comparison-value">{{ pv_ratio }}% of median</span>
+      </div>
+      {% if benchmarks.time_on_page.median > 0 %}
+      <div class="comparison-item">
+        <span class="metric-name">Time on Page</span>
+        <div class="comparison-bar">
+          {% set time_ratio = (post.avg_time_on_page / benchmarks.time_on_page.median * 100)|int if benchmarks.time_on_page.median > 0 else 0 %}
+          {% set time_width = time_ratio if time_ratio < 200 else 200 %}
+          <div class="bar-fill {% if time_ratio > 100 %}above{% else %}below{% endif %}" 
+               style="width: {{ time_width }}%"></div>
+          <span class="bar-marker" style="left: 100%">Median</span>
+        </div>
+        <span class="comparison-value">{{ time_ratio }}% of median</span>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+
+<style>
+.post-detail-view {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.back-link {
+  color: #666;
+  text-decoration: none;
+  font-size: 0.9em;
+}
+
+.back-link:hover {
+  color: #4CAF50;
+}
+
+.post-info h2 {
+  margin-bottom: 10px;
+  font-size: 1.5em;
+}
+
+.post-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: center;
+}
+
+.view-post {
+  color: #4CAF50;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.publish-date {
+  color: #888;
+  font-size: 0.9em;
+}
+
+.post-tags {
+  display: flex;
+  gap: 8px;
+}
+
+.post-tags .tag {
+  background: #f0f0f0;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  color: #666;
+}
+
+.referrers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.referrer-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.referrer-name {
+  font-weight: 500;
+}
+
+.referrer-visits {
+  color: #666;
+}
+
+.post-trend {
+  height: 150px;
+}
+
+.lifecycle-indicator {
+  text-align: center;
+  padding: 15px;
+  margin-top: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.lifecycle-indicator.growing {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.lifecycle-indicator.declining {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.comparison-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.comparison-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.metric-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.comparison-bar {
+  position: relative;
+  background: #e0e0e0;
+  height: 20px;
+  border-radius: 4px;
+  overflow: visible;
+}
+
+.comparison-bar .bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+
+.comparison-bar .bar-fill.above {
+  background: #4CAF50;
+}
+
+.comparison-bar .bar-fill.below {
+  background: #ff9800;
+}
+
+.bar-marker {
+  position: absolute;
+  top: -20px;
+  transform: translateX(-50%);
+  font-size: 0.75em;
+  color: #888;
+}
+
+.bar-marker::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 15px;
+  width: 1px;
+  height: 25px;
+  background: #999;
+}
+
+.comparison-value {
+  font-size: 0.85em;
+  color: #666;
+}
+
+/* Inherit analytics dashboard styles */
+.analytics-section {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.analytics-section h2 {
+  margin-top: 0;
+  font-size: 1.25em;
+  color: #333;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+}
+
+.stat-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 2em;
+  font-weight: bold;
+  color: #333;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.85em;
+  color: #666;
+  margin-top: 5px;
+}
+
+.trend-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 120px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.chart-bar {
+  flex: 1;
+  background: #4CAF50;
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  min-height: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.bar-tooltip {
+  position: absolute;
+  top: -25px;
+  font-size: 0.7em;
+  background: #333;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.chart-bar:hover .bar-tooltip {
+  opacity: 1;
+}
+
+.bar-month {
+  position: absolute;
+  bottom: -20px;
+  font-size: 0.7em;
+  color: #888;
+}
+</style>
+{% endblock %}
+
