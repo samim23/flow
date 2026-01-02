@@ -67,4 +67,20 @@
 {%- if page -%}
 <div id="content-discovery" class="content-discovery" data-current-path="{{ page.path }}"></div>
 {%- endif -%}
+
+{# Related Posts Side Panel for editing mode - only shown when logged in #}
+{%- if freeze < 1 -%}
+<div id="related_panel" class="related-panel-hidden">
+	<div class="related-panel-header">
+		<h3>Related Posts</h3>
+		<span id="related_count"></span>
+		<button id="related_close" title="Close (Esc)">&times;</button>
+	</div>
+	<div id="related_results">
+		<div class="related-loading">
+			<img src="{{ request.url_for('static', path='img/loading.gif') }}" alt="Loading..." width="40" />
+		</div>
+	</div>
+</div>
+{%- endif -%}
 {% endblock content %}

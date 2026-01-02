@@ -446,12 +446,18 @@ function editor_create(container, submit_btn) {
 
 		if (strip(elContent).length > 0) {
 			submit_btn.show();
-			$("#related_btn").show(); // Show related button when content exists
+			// Only show #related_btn if this is the main new post editor (not editing existing post)
+			if (container.is("#text_area")) {
+				$("#related_btn").show();
+			}
 			$(".note_publish").slideUp("fast"); // Ensure indicator is hidden
 			$("#editor_placeholder").hide(); // Hide placeholder when content exists
 		} else {
 			submit_btn.hide();
-			$("#related_btn").hide(); // Hide related button when empty
+			// Only hide #related_btn if this is the main new post editor
+			if (container.is("#text_area")) {
+				$("#related_btn").hide();
+			}
 			$("#editor_placeholder").show(); // Show placeholder when empty
 		}
 	});
@@ -604,9 +610,22 @@ editpost = function () {
 				$(".content_btn").remove();
 				post_edit.removeClass(".editable");
 				editing = false;
+				// Close related panel if open
+				closeRelatedPanel();
 			},
 		});
 		btn_container.append(btn_cancel);
+
+		// button related (for finding related posts while editing)
+		var btn_related = $("<button/>", {
+			id: "edit_related_btn",
+			class: "content_btn btn_related",
+			html: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> Related',
+			click: function () {
+				openRelatedPanelForEdit(post_edit);
+			},
+		});
+		btn_container.append(btn_related);
 
 		// button save
 		var btn_save = $("<button/>", {
@@ -626,6 +645,8 @@ editpost = function () {
 				editing = false;
 				post_edit.removeClass(".editable");
 				$(".content_btn").remove();
+				// Close related panel if open
+				closeRelatedPanel();
 
 				elContent = cleanContent(elContent);
 				var hashtags = getHashtag(elContent)[0];
@@ -1382,6 +1403,7 @@ let currentRelatedOffset = 0;
 let isLoadingRelated = false;
 let currentQuery = '';
 let currentTags = '';
+let activeEditorElement = null; // Track which editor is currently active
 
 function openRelatedPanel() {
 	const panel = document.getElementById('related_panel');
@@ -1390,6 +1412,36 @@ function openRelatedPanel() {
 	// Get editor content
 	const editorContent = $('#text_area').html() || '';
 	if (!editorContent.trim()) return;
+	
+	// Set active editor
+	activeEditorElement = document.getElementById('text_area');
+	
+	// Extract keywords and tags
+	const { keywords, tags } = extractKeywordsAndTags(editorContent);
+	currentQuery = keywords.join(' ');
+	currentTags = tags.join(',');
+	
+	// Reset state
+	currentRelatedOffset = 0;
+	relatedPanelOpen = true;
+	
+	// Show panel
+	panel.classList.remove('related-panel-hidden');
+	
+	// Load initial results
+	loadRelatedPosts(true);
+}
+
+function openRelatedPanelForEdit(editElement) {
+	const panel = document.getElementById('related_panel');
+	if (!panel) return;
+	
+	// Get content from the element being edited
+	const editorContent = $(editElement).html() || '';
+	if (!editorContent.trim()) return;
+	
+	// Set active editor to the element being edited
+	activeEditorElement = editElement[0] || editElement;
 	
 	// Extract keywords and tags
 	const { keywords, tags } = extractKeywordsAndTags(editorContent);
@@ -1413,6 +1465,7 @@ function closeRelatedPanel() {
 		panel.classList.add('related-panel-hidden');
 	}
 	relatedPanelOpen = false;
+	activeEditorElement = null;
 }
 
 function loadRelatedPosts(isInitial = false) {
@@ -1536,7 +1589,8 @@ function setupRelatedInsertButtons() {
 }
 
 function insertLinkIntoEditor(link) {
-	const editor = document.getElementById('text_area');
+	// Use the active editor element (either text_area for new posts or post content for edits)
+	const editor = activeEditorElement || document.getElementById('text_area');
 	if (!editor) return;
 	
 	// Focus the editor
@@ -1571,7 +1625,8 @@ function insertLinkIntoEditor(link) {
 }
 
 function insertEmbedIntoEditor(embedHtml) {
-	const editor = document.getElementById('text_area');
+	// Use the active editor element (either text_area for new posts or post content for edits)
+	const editor = activeEditorElement || document.getElementById('text_area');
 	if (!editor) return;
 	
 	// Focus the editor
@@ -1703,12 +1758,16 @@ function initRelatedPanel() {
 $(function () {
 	initTagAutocomplete();
 	initRelatedPanel();
-	newpost();
+	
+	// Only run newpost() if the editor elements exist (i.e., on index page)
+	if ($(".editable").length > 0 && $("#text_area").length > 0) {
+		newpost();
+		$("#text_area").focus();
+		setTimeout(function () {
+			$("#text_area").focus();
+		}, 10);
+	}
+	
 	editpost();
 	setup();
-
-	$("#text_area").focus();
-	setTimeout(function () {
-		$("#text_area").focus();
-	}, 10);
 });
