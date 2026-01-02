@@ -460,6 +460,9 @@ async function loadPageFromURL(url) {
 			// Call additional formatting functions if they exist
 			if (typeof repost === "function") repost();
 			if (typeof editpost === "function") editpost();
+			
+			// Initialize flow-embeds in newly loaded content
+			initFlowEmbeds();
 
 			loading = false;
 		} else {
