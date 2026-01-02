@@ -104,12 +104,49 @@ World events and trends affecting content strategy:
 
 # PART 8: SESSION HISTORY
 
-(Append new sessions below. Use this format:)
+(Append new sessions below. Use the template at the end of this file.)
 
+---
+
+# PART 9: DISTRIBUTION
+
+## Recently Distributed
+
+| Post | Platform | Link | Date | Referral Traffic | Notes |
+|------|----------|------|------|------------------|-------|
+| [Post slug] | [Twitter/HN/Reddit/etc] | [Link to post] | [Date] | [Visits from referrer] | [Any observations] |
+
+## Pending Referrer Checks
+
+| Post | Platform | Distributed | Check On |
+|------|----------|-------------|----------|
+| [Post slug] | [Platform] | [Date distributed] | [Date +7 days] |
+
+## Distribution Insights
+
+Learnings about what distribution approaches work:
+
+- [Insight about what platforms/formats drive traffic]
+- [Insight about timing or content types]
+
+---
+
+# TEMPLATES
+
+## Session Template
+
+```markdown
 ## Session: YYYY-MM-DD
 
-**Trigger**: [What initiated this session]  
-**Duration**: [Time spent]
+**Agent**: [Model name]  
+**Duration**: [Time spent]  
+**Trigger**: [What initiated this session]
+
+### Distribution Check-in
+[Did user distribute anything? Links shared?]
+
+### Content Audit
+[New posts since last session, performance data]
 
 ### Data Analyzed
 [Summary of API calls and key findings]
@@ -125,3 +162,4 @@ World events and trends affecting content strategy:
 
 ### Next Session Focus
 [Primary objective for next session]
+```

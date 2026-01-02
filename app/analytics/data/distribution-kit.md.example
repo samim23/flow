@@ -1,0 +1,144 @@
+# 📣 Distribution Kit
+
+> **Generated**: [Date and time]  
+> **Agent**: Content Optimizer  
+> This file is refreshed each session with current distribution priorities.
+> Check `agent-log.md` PART 9 for distribution history and insights.
+
+---
+
+## How This Works
+
+1. **Agent audits** all content and identifies high-potential posts
+2. **Agent generates** copy-pasteable content for each platform
+3. **You post** to the platforms when ready
+4. **Next session**, tell the agent the links so it can track results
+
+---
+
+## 🎯 Top Priorities
+
+### 1. [Post Title]
+
+**Link**: https://samim.io/p/[post-slug]/
+
+**Why**: [Reasoning: views, momentum, timeliness, tag performance, etc.]
+
+#### Twitter
+
+**Thread opener** (recommended for depth):
+```
+[Opening hook that stands alone]
+
+🧵
+```
+
+**Thread continuation**:
+```
+2/ [Key insight or claim]
+
+3/ [Supporting point]
+
+4/ [Link to full post]
+```
+
+**Single tweet** (for quick shares):
+```
+[Punchy summary with hook] [link]
+```
+
+#### Hacker News
+
+Title options (pick one):
+1. [Descriptive, curiosity-inducing title]
+2. [Alternative framing]
+
+> **HN Tips**: Submit weekday mornings US time. Comment on your own post with context. Avoid clickbait.
+
+#### Reddit
+
+| Subreddit | Angle | Title Suggestion |
+|-----------|-------|------------------|
+| r/[sub] | [What angle fits this community] | [Suggested title] |
+| r/[sub] | [Different angle] | [Different title] |
+
+> **Reddit Tips**: Check sub rules. Don't spam. Engage authentically in comments.
+
+#### LinkedIn
+
+```
+[More professional framing of the content]
+
+[Key takeaway for business/professional audience]
+
+[Link]
+```
+
+#### Targeted Outreach
+
+Based on web research for this specific topic:
+
+**Newsletters**:
+| Newsletter | Why relevant | How to submit |
+|------------|--------------|---------------|
+| [Newsletter name] | [Covers this topic] | [Reply to author / submit form / etc.] |
+
+**Key People to Tag/Notify**:
+| Person | Platform | Why relevant |
+|--------|----------|--------------|
+| [@handle] | Twitter | [Writes about this topic, recently posted about X] |
+
+**Niche Communities**:
+| Community | Platform | Notes |
+|-----------|----------|-------|
+| [Community name] | Discord/Slack/Forum | [How to share authentically] |
+
+**Potential Backlinks**:
+| Site | Why they might link | Contact |
+|------|---------------------|---------|
+| [Site name] | [They wrote about related topic] | [Email/form] |
+
+---
+
+### 2. [Next Post Title]
+
+[Same structure as above]
+
+---
+
+## 📝 After You Post
+
+Tell the agent at next session:
+
+> "Posted [post name] to [platform] — [link]"
+
+Examples:
+- "Posted ML Year in Review to Twitter — https://x.com/samim/status/123456"
+- "Posted Brain Wave Engine to HN — https://news.ycombinator.com/item?id=789"
+
+The agent will:
+1. Log it in `agent-log.md` PART 9
+2. Set a reminder to check referrer data in 7 days
+3. Update distribution insights with learnings
+
+---
+
+## 🕐 Timing Notes
+
+| Platform | Best Times | Notes |
+|----------|------------|-------|
+| Twitter | [Based on audience analysis] | Threads get more engagement than single tweets |
+| Hacker News | Weekday mornings US (9am-11am EST) | Avoid weekends |
+| Reddit | Varies by sub | Check when each sub is most active |
+| LinkedIn | Tue-Thu mornings | Business hours |
+
+---
+
+## 📊 Current Performance Context
+
+[Brief summary of what's working based on recent data]
+
+- Top performing tag: [Tag] ([X] avg views)
+- Best referrer quality: [Source] ([X] pages/visit)
+- Current traffic trend: [Up/Down X% WoW]
+

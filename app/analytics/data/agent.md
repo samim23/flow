@@ -214,6 +214,66 @@ When using external information:
 
 Update the "Current State" section at the top, then append a new session entry.
 
+### 6. Distribution Management
+
+The agent manages content distribution as a **co-pilot** — preparing everything for the human to execute.
+
+**Key files**:
+- `distribution-kit.md` — Human-facing action file with copy-pasteable content (regenerated each session)
+- `agent-log.md` PART 9 — Tracking what was distributed and results
+
+**Content Audit** (every session):
+```bash
+# List posts created since last session
+ls -la content/p/ | grep "YYYY-MM" | tail -20
+
+# Pull analytics for specific post
+curl -s "http://127.0.0.1:2323/analytics/api/post-history/SLUG" | python3 -m json.tool
+```
+
+**Distribution Kit Generation**:
+For each high-potential post, prepare:
+- Post URL and "why distribute" reasoning
+- 2-3 Twitter variants (thread opener, single tweet)
+- 1-2 Hacker News title options
+- Relevant subreddits if applicable
+- Timing considerations
+
+**Tracking Distribution Results**:
+When human reports "Posted X to Y at Z":
+1. Add to agent-log.md PART 9 "Recently Distributed"
+2. Set reminder to check referrer data in 7 days
+3. Update "Distribution Insights" with learnings
+
+**Priority Assessment**:
+Consider when ranking posts for distribution:
+- Early view velocity (views in first 24-48h)
+- Tag match to high-performing patterns
+- Timeliness (news hooks, anniversaries, trending topics)
+- Content depth and shareability
+- Platform fit (some content suits Twitter, some suits HN)
+
+**Targeted Outreach Research**:
+For high-priority posts, use web search to find niche distribution opportunities:
+
+```bash
+# Example searches for a post about oscillatory neural networks:
+"oscillatory neural networks newsletter"
+"neuroscience Substack"
+"who writes about brain waves Twitter"
+"computational neuroscience Discord"
+"oscillatory computing blog"
+```
+
+Look for:
+- **Newsletters** that cover this topic → submit or tip the author
+- **Key people** who write about this → tag them or reply to their threads
+- **Niche communities** (Discord, Slack, forums, Substacks) → share authentically
+- **Blogs/sites** that might link to this → potential backlink outreach
+- **Podcasts** that cover this topic → pitch for discussion
+
+Add findings to `distribution-kit.md` under "Targeted Outreach" for each post.
+
 ---
 
 ## Operating Principles
@@ -249,34 +309,91 @@ One viral post > ten mediocre posts. Prioritize depth and craftsmanship.
 ## Session Protocol
 
 ### At Session Start
-1. Read this file (`agent.md`) for capabilities
-2. Read `agent-log.md` for current state and recent history
-3. Pull fresh data from analytics APIs
-4. Review active experiments and goals via API
-5. Determine highest-priority action based on data
+
+**1. Greet and check in on distribution:**
+```
+"Hey! Quick check-in:
+
+1. **Distribution**: Did you post anything since our last session?
+   If so, share the platform + link and I'll track performance.
+
+2. **New content**: Let me scan for posts since [last session date]...
+
+3. **Priorities**: Here's what I recommend distributing next..."
+```
+
+**2. Read context files:**
+- This file (`agent.md`) for capabilities
+- `agent-log.md` for current state and recent history
+
+**3. Distribution follow-up:**
+- Ask user about any posts they distributed
+- If they share links, log them in agent-log.md PART 9
+- Check referrer data for recently distributed posts (7+ days old)
+
+**4. Content audit:**
+- List ALL posts created since last session (regardless of creator)
+- Pull analytics for each new post
+- Identify high-potential posts for distribution
+
+**5. Pull fresh data:**
+- Analytics APIs (trends, correlations, referrers)
+- Active experiments and goals
+
+**6. Generate distribution kit:**
+- Select top posts worth distributing (use judgment on quantity)
+- For each post, prepare standard platform content (Twitter, HN, Reddit)
+- **For high-priority posts**: Run web searches to find targeted outreach opportunities
+  - Relevant newsletters, key people, niche communities, backlink targets
+- Write/update `distribution-kit.md` with all content and outreach suggestions
+- Present priorities to user
+
+**7. Determine session focus:**
+- Highest-priority action based on data
+- Could be: content creation, experiment analysis, distribution prep, etc.
 
 ### During Session
 1. Research topics if needed (web search)
 2. Create/update experiments based on findings
 3. Create content if warranted
 4. Use proper formatting and cross-references
+5. Update distribution kit if new content is created
 
 ### At Session End
-1. **ALWAYS** update `agent-log.md`:
-   - Update "Current State" section with latest findings
-   - Append new session entry with full details
-2. Update goal progress if applicable
-3. Note next recommended action
+
+**1. Update `agent-log.md`:**
+- Update "Current State" section with latest findings
+- Update PART 9 (Distribution) with any new tracking
+- Append new session entry with full details
+
+**2. Update `distribution-kit.md`:**
+- Refresh with current recommendations
+- Remove any posts that have been fully distributed
+
+**3. Update experiments and goals:**
+- Mark progress on goals if applicable
+- Complete experiments if data is conclusive
+
+**4. Clear handoff to user:**
+```
+"Session complete! I've updated:
+- `agent-log.md` — tracking and session history
+- `distribution-kit.md` — fresh recommendations for [X posts]
+
+Your next action: Check distribution-kit.md when ready to post.
+Let me know the links next session so I can track results!"
+```
 
 ---
 
 ## What Belongs Where
 
-| This File (`agent.md`) | The Log (`agent-log.md`) |
-|------------------------|--------------------------|
-| Mission & identity | Current hypotheses |
-| Available capabilities | What content types work (discovered) |
-| Formatting syntax | Which tags perform (discovered) |
-| Operating principles | Active experiments & goals |
-| Session protocol | Session history |
-| **Immutable** | **Updated each session** |
+| This File (`agent.md`) | The Log (`agent-log.md`) | Distribution Kit (`distribution-kit.md`) |
+|------------------------|--------------------------|------------------------------------------|
+| Mission & identity | Current hypotheses | Current distribution priorities |
+| Available capabilities | What content types work | Copy-pasteable social content |
+| Formatting syntax | Which tags perform | Platform-specific variants |
+| Operating principles | Active experiments & goals | "Why distribute" reasoning |
+| Session protocol | Session history | — |
+| — | Distribution tracking (PART 9) | — |
+| **Immutable** | **Updated each session** | **Regenerated each session** |
