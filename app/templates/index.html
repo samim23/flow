@@ -1,4 +1,36 @@
-{% extends "base.html" %} {% block content %} {% if freeze<1 %}
+{% extends "base.html" %}
+
+{# Homepage Sidebar - shown on desktop in margin, on mobile as hero #}
+{% block sidebar %}
+<aside id="sidebar">
+  {# Welcome section - populated by client-side JS based on localStorage #}
+  <div class="sidebar-welcome" id="sidebar-welcome" style="display: none;">
+    <div class="welcome-message">
+      <span class="welcome-text">Welcome back!</span>
+      <span class="welcome-new-posts"></span>
+    </div>
+  </div>
+
+  {# Popular section - JS renders shuffled selection from pool #}
+  {% if popular_posts %}
+  <div class="sidebar-popular" id="sidebar-popular">
+    <h4>Popular</h4>
+    <ul id="popular-list"></ul>
+    <script type="application/json" id="popular-posts-data">{{ popular_posts | tojson }}</script>
+  </div>
+  {% elif freeze == 0 %}
+  {# Dev mode: async load #}
+  <div class="sidebar-popular" id="sidebar-popular">
+    <h4>Popular</h4>
+    <ul id="popular-list-dynamic">
+      <li class="loading-placeholder">Loading...</li>
+    </ul>
+  </div>
+  {% endif %}
+</aside>
+{% endblock sidebar %}
+
+{% block content %} {% if freeze<1 %}
 <div id="edit_container">
 	<div id="editor_wrapper">
 	<div id="text_area" class="editable"></div>

@@ -1,7 +1,7 @@
 # app/routes.py
 
 from fastapi import APIRouter, Request, HTTPException, BackgroundTasks
-from fastapi.responses import HTMLResponse, Response, RedirectResponse
+from fastapi.responses import HTMLResponse, Response, RedirectResponse, JSONResponse
 from fastapi import UploadFile, File
 from werkzeug.utils import secure_filename
 from typing import Optional, Dict, Any
@@ -565,6 +565,36 @@ async def sitemap(request: Request):
         {"request": request, **context},
         media_type="application/xml"
     )
+
+
+@router.get("/posts.json", response_class=JSONResponse)
+async def posts_json(request: Request):
+    """Generate posts index JSON for client-side features (random post, new post count)"""
+    content_manager = request.app.state.content_manager
+    pages = list(content_manager.get_pages_by_status("public"))
+    
+    # Sort by date descending (newest first)
+    pages.sort(
+        key=lambda p: p.metadata.date or datetime(1970, 1, 1),
+        reverse=True
+    )
+    
+    # Build compact JSON with essential info
+    posts_data = []
+    for page in pages:
+        post_entry = {
+            "url": f"/p/{page.path}/",
+            "path": page.path,
+            "title": page.metadata.title or page.path,
+        }
+        if page.metadata.date:
+            post_entry["date"] = page.metadata.date.isoformat()
+        # Include tags for client-side filtering (tag pages, random by tag, etc.)
+        if page.metadata.tags:
+            post_entry["tags"] = page.metadata.tags
+        posts_data.append(post_entry)
+    
+    return JSONResponse(content=posts_data)
 
 
 # Site publishing

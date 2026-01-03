@@ -1,0 +1,34 @@
+# Sidebar Popular Posts Configuration
+# ====================================
+# Controls which posts appear in the homepage sidebar's "Popular" section.
+#
+# Copy this file to sidebar-popular.txt and customize:
+#   cp sidebar-popular.txt.example sidebar-popular.txt
+#
+# The .txt file is gitignored so your personal preferences stay local.
+#
+# Sections:
+#   pin:          Posts that always appear at top (in listed order)
+#   exclude:      Specific posts to never show
+#   exclude_tags: All posts with these tags are hidden
+#
+# Use post path/slug (the filename without extension), e.g.:
+#   2024-01-15-my-great-post
+#
+# System pages (about, contact, etc.) are auto-excluded.
+
+# Posts that always appear at top
+pin:
+# 2024-01-15-featured-post
+# 2023-12-01-best-of-2023
+
+# Specific posts to exclude
+exclude:
+# 2022-03-old-controversial-post
+
+# Entire tags to exclude (case-insensitive)
+exclude_tags:
+# politics
+# nsfw
+# draft
+

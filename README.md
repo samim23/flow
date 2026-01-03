@@ -31,6 +31,7 @@ That's why I built Flow - a minimalist intelligent blogging engine that gets out
 - 🎨 **Customizable**: Easy to modify templates and styling
 - 📊 **Deep Analytics**: Matomo integration with dashboard, experiments, and goal tracking
 - 🤖 **AI Content Agent**: Framework for AI-assisted content optimization with persistent world model
+- 🎲 **Smart Sidebar**: Welcome back message, popular posts (with editorial control), random post discovery
 
 ## Installation
 
@@ -479,6 +480,49 @@ Execute based on current data from the analytics APIs.
 5. Update world model → persist learnings for next session
 
 
+
+## Homepage Sidebar
+
+The homepage includes an optional sidebar with:
+
+- **Welcome Back**: Returns visitors see "Welcome back! X new posts since [date]" with a subscribe CTA
+- **Popular Posts**: Top posts from the last 30 days (from Matomo analytics)
+- **Random Post**: Dice icon in the header for serendipitous discovery
+
+### Popular Posts Configuration
+
+Control which posts appear in the Popular section by creating a config file:
+
+```bash
+cp app/data/sidebar-popular.txt.example app/data/sidebar-popular.txt
+```
+
+Edit the file to customize:
+
+```
+# Posts that always appear at top (in order)
+pin:
+2024-01-15-featured-post
+2023-12-01-best-of-2023
+
+# Specific posts to exclude
+exclude:
+2022-03-controversial-post
+
+# Entire tags to exclude (all posts with these tags hidden)
+exclude_tags:
+politics
+nsfw
+```
+
+**How it works:**
+- Pinned posts appear first, in the order listed
+- Algorithmic posts fill the remaining slots (up to 7 total)
+- Exclusions filter out specific posts and all posts with excluded tags
+- System pages (about, contact, etc.) are auto-excluded
+- If Matomo isn't configured, the Popular section is hidden
+
+The config file is gitignored so your preferences stay local.
 
 ## Contributing
 

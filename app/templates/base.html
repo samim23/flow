@@ -222,6 +222,16 @@
           <span>subscribe</span>
         </a></div>
         {%- endif -%}
+        <div class="post_static"><a title="Random post" href="#" id="random-post-nav" class="random-post-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/>
+            <circle cx="16" cy="8" r="1.5" fill="currentColor" stroke="none"/>
+            <circle cx="8" cy="16" r="1.5" fill="currentColor" stroke="none"/>
+            <circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+          </svg>
+        </a></div>
         {%- if is_live_mode and not is_authenticated -%}
         <div class="post_static"><a title="Login to edit" href="{{ request.url_for('login') }}">login</a></div>
         {%- endif -%}
@@ -242,6 +252,16 @@
           <span>subscribe</span>
         </a></div>
         {%- endif -%}
+        <div class="post_static"><a title="Random post" href="#" id="random-post-nav" class="random-post-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/>
+            <circle cx="16" cy="8" r="1.5" fill="currentColor" stroke="none"/>
+            <circle cx="8" cy="16" r="1.5" fill="currentColor" stroke="none"/>
+            <circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+          </svg>
+        </a></div>
         {%- if is_live_mode -%}
         <div class="post_static"><a title="Logout" href="{{ request.url_for('logout') }}">logout</a></div>
         {%- endif -%}
@@ -250,14 +270,14 @@
     </header>
     {%- if freeze==0 %}
     <div class="note_publish"></div>
-    <div id="jq-dropdown-publish" class="jq-dropdown jq-dropdown-tip jq-dropdown-relative jq-dropdown-anchor-right">
+    <div id="jq-dropdown-publish" class="jq-dropdown jq-dropdown-tip jq-dropdown-anchor-right">
       <ul class="jq-dropdown-menu">
         <li><b>Deploy to</b></li>
         <li><small><a href="{{app.site_url}}" target="_blank">{{app.site_url}}</a></small></li>
         <li><a title="publish" href="/" id="btn_publish">Publish</a></li>
       </ul>
     </div>
-    <div id="jq-dropdown-1" class="jq-dropdown jq-dropdown-tip jq-dropdown-relative jq-dropdown-anchor-right">
+    <div id="jq-dropdown-1" class="jq-dropdown jq-dropdown-tip jq-dropdown-anchor-right">
       <ul class="jq-dropdown-menu">
         <li><a class="post_edit" title="Edit">🖋 Edit</a></li>
         <li class="jq-dropdown-divider"></li>
@@ -329,9 +349,12 @@
     </script>
     {%- endif %}
     <main>
-      {%- block content -%}
-      <p>Default content to be displayed</p>
-      {%- endblock content -%}
+      {%- block sidebar -%}{%- endblock sidebar -%}
+      <div id="content">
+        {%- block content -%}
+        <p>Default content to be displayed</p>
+        {%- endblock content -%}
+      </div>
     </main>
     <footer id="footer">
       <div class="footer-content">

@@ -664,12 +664,16 @@ class StaticSiteGenerator:
             paginator = Paginator(pages, self.settings.site_scroll_amount)
             first_page = list(paginator.get_page(paginator.total_pages - 1))
             
+            # Get popular posts for sidebar (from analytics if available)
+            popular_posts = self._get_popular_posts_for_sidebar()
+            
             context = self.get_template_context({
                 "pages": first_page,
                 "current_number": paginator.total_pages - 1,
                 "total_num": paginator.total_pages - 1,
                 "freeze": 1,
-                "pageTitle": self.settings.site_name
+                "pageTitle": self.settings.site_name,
+                "popular_posts": popular_posts
             })
             
             await self.generate_page("index.html", self.output_dir / "index.html", context)
@@ -677,6 +681,60 @@ class StaticSiteGenerator:
         except Exception as e:
             logger.error(f"Error generating index: {e}")
             raise
+    
+    def _get_popular_posts_for_sidebar(self):
+        """Get popular posts for homepage sidebar from analytics"""
+        try:
+            from app.analytics import get_matomo_client, get_analytics_store
+            from app.sidebar_config import SidebarConfig, filter_popular_posts
+            
+            matomo = get_matomo_client()
+            store = get_analytics_store()
+            config = SidebarConfig.load()
+            
+            algo_posts = []
+            
+            if matomo.is_configured:
+                # Get top pages from last 30 days (fetch more to allow for filtering)
+                from datetime import timedelta
+                end_date = datetime.now()
+                start_date = end_date - timedelta(days=30)
+                date_range = f"{start_date.strftime('%Y-%m-%d')},{end_date.strftime('%Y-%m-%d')}"
+                
+                top_pages = matomo.get_top_pages(period="range", date=date_range, limit=50)
+                
+                for page in top_pages:
+                    post_analytics = store.get_post_analytics(page.path)
+                    title = post_analytics.title if post_analytics else page.label
+                    algo_posts.append({
+                        "path": page.path,
+                        "title": title or page.path,
+                        "pageviews": page.pageviews
+                    })
+            else:
+                # Fallback to cached store data
+                top_posts = store.get_top_posts(limit=50)
+                if top_posts:
+                    algo_posts = [
+                        {"path": p.path, "title": p.title, "pageviews": p.total_pageviews}
+                        for p in top_posts
+                    ]
+            
+            # Filter and order using config (pinned, exclusions, validation)
+            # Use SIDEBAR_POPULAR_POOL for client-side shuffling
+            from app.sidebar_config import SIDEBAR_POPULAR_POOL
+            filtered = filter_popular_posts(
+                algo_posts, 
+                self.content_manager, 
+                config,
+                limit=SIDEBAR_POPULAR_POOL
+            )
+            
+            return filtered if filtered else None
+            
+        except Exception as e:
+            logger.warning(f"Could not get popular posts for sidebar: {e}")
+            return None
 
     async def generate_archives(self):
         """Generate archives with smart chronological caching"""
@@ -821,6 +879,45 @@ class StaticSiteGenerator:
             
         except Exception as e:
             logger.error(f"Error generating sitemap: {e}")
+            raise
+
+    async def generate_posts_json(self):
+        """Generate posts.json index for client-side features (random post, new post count)"""
+        try:
+            public_pages = list(self.content_manager.get_pages_by_status("public"))
+            
+            # Sort by date descending (newest first)
+            public_pages.sort(
+                key=lambda p: p.metadata.date or datetime(1970, 1, 1),
+                reverse=True
+            )
+            
+            # Build compact JSON with essential info
+            posts_data = []
+            for page in public_pages:
+                post_entry = {
+                    "url": f"/p/{page.path}/",
+                    "path": page.path,
+                    "title": page.metadata.title or page.path,
+                }
+                if page.metadata.date:
+                    post_entry["date"] = page.metadata.date.isoformat()
+                # Include tags for client-side filtering (tag pages, random by tag, etc.)
+                if page.metadata.tags:
+                    post_entry["tags"] = page.metadata.tags
+                posts_data.append(post_entry)
+            
+            # Write to output directory
+            output_file = self.output_dir / "posts.json"
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump(posts_data, f, separators=(',', ':'))  # Compact JSON
+            
+            logger.debug(f"Generated posts.json with {len(posts_data)} posts")
+            
+        except Exception as e:
+            logger.error(f"Error generating posts.json: {e}")
             raise
 
     async def generate_explore(self):
@@ -988,6 +1085,7 @@ class StaticSiteGenerator:
                 self.generate_index(),
                 self.generate_rss(),
                 self.generate_sitemap(),
+                self.generate_posts_json(),
                 self.generate_tags_overview(),
                 self.generate_explore(),
                 self.generate_archives()
@@ -998,6 +1096,7 @@ class StaticSiteGenerator:
             self.metrics.add_generated_file("core_pages", "index.html")
             self.metrics.add_generated_file("core_pages", "rss.xml")
             self.metrics.add_generated_file("core_pages", "sitemap.xml")
+            self.metrics.add_generated_file("core_pages", "posts.json")
             self.metrics.add_generated_file("core_pages", "tag/index.html")
             self.metrics.add_generated_file("core_pages", "explore/index.html")
             

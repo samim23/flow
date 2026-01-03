@@ -423,6 +423,76 @@ async def api_realtime(request: Request):
     return {"visitors": count, "configured": True, "window_minutes": 30}
 
 
+@analytics_router.get("/api/popular")
+async def api_popular(
+    request: Request,
+    days: int = Query(30, description="Number of days to analyze")
+):
+    """
+    Get popular posts for sidebar display.
+    
+    Used by the homepage sidebar in dev mode to show popular posts.
+    Returns top posts by pageviews over the specified period.
+    Respects sidebar-popular.txt config for pinning and exclusions.
+    """
+    from . import get_matomo_client, get_analytics_store
+    from app.sidebar_config import SidebarConfig, filter_popular_posts
+    
+    matomo = get_matomo_client()
+    store = get_analytics_store()
+    config = SidebarConfig.load()
+    
+    # Get content manager for validation
+    content_manager = request.app.state.content_manager
+    
+    algo_posts = []
+    source = "cache"
+    
+    if matomo.is_configured:
+        source = "matomo"
+        # Get top pages from Matomo (fetch more to allow for filtering)
+        from datetime import datetime, timedelta
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+        date_range = f"{start_date.strftime('%Y-%m-%d')},{end_date.strftime('%Y-%m-%d')}"
+        
+        top_pages = matomo.get_top_pages(period="range", date=date_range, limit=50)
+        
+        for page in top_pages:
+            post_analytics = store.get_post_analytics(page.path)
+            title = post_analytics.title if post_analytics else page.label
+            algo_posts.append({
+                "path": page.path,
+                "title": title or page.path,
+                "pageviews": page.pageviews
+            })
+    else:
+        # Fall back to store data if available
+        top_posts = store.get_top_posts(limit=50)
+        if top_posts:
+            algo_posts = [
+                {"path": p.path, "title": p.title, "pageviews": p.total_pageviews}
+                for p in top_posts
+            ]
+    
+    # Filter and order using config (pinned, exclusions, validation)
+    # Return full pool for client-side shuffling
+    from app.sidebar_config import SIDEBAR_POPULAR_POOL
+    filtered = filter_popular_posts(
+        algo_posts,
+        content_manager,
+        config,
+        limit=SIDEBAR_POPULAR_POOL
+    )
+    
+    return {
+        "posts": filtered,
+        "days": days,
+        "source": source,
+        "configured": matomo.is_configured
+    }
+
+
 @analytics_router.get("/api/trends")
 async def api_trends(request: Request):
     """

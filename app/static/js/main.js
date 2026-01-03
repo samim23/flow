@@ -482,9 +482,29 @@ function makePostString(
 	const hasImage = /<img|<figure/.test(elContent);
 	const textContent = elContent.replace(/<[^>]*>?/gm, "").trim();
 	
-	// Ensure title sanitization
-	let title = elContent.trim();
-	title = title.replace(/<[^>]*>?/gm, ""); // strip HTML
+	// Try to extract title from h1/h2/h3 at the beginning of the post
+	// This looks for h1/h2/h3 near the start, optionally wrapped in <p> tags
+	// and ignoring any leading whitespace, empty paragraphs, or <br> tags
+	let title = null;
+	
+	// Remove leading empty elements (empty paragraphs, br tags, whitespace)
+	const contentForHeader = elContent.replace(/^(?:\s*<p>\s*<\/p>|\s*<br\s*\/?>|\s)+/gi, "");
+	
+	// Match h1/h2/h3, possibly wrapped in <p> tags
+	const headerMatch = contentForHeader.match(/^(?:<p>\s*)?<(h[1-3])(?:\s[^>]*)?>([\s\S]+?)<\/\1>(?:\s*<\/p>)?/i);
+	
+	if (headerMatch) {
+		// Extract the header text content, strip any nested HTML
+		title = headerMatch[2].replace(/<[^>]*>?/gm, "").trim();
+	}
+	
+	// Fall back to full content if no header found or header is empty
+	if (!title) {
+		title = elContent.trim();
+		title = title.replace(/<[^>]*>?/gm, ""); // strip HTML
+	}
+	
+	// Sanitize title
 	title = title.replace(/(?:https?|ftp):\/\/[\n\S]+/g, ""); // strip links
 	title = title.replace(/#\w+/g, ""); // remove entire hashtags (not just # symbol)
 	title = title.replace(/\n\s*\n/g, "\n"); // replace multi line breaks with single

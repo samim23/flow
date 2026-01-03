@@ -1087,3 +1087,300 @@ function renderDiscovery(container, tags, tagPosts, topStories) {
 
 // Initialize on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', initContentDiscovery);
+
+// ============================================
+// Sidebar: Welcome Message + Random Post + Popular
+// ============================================
+
+function initSidebar() {
+	initWelcomeMessage();
+	initRandomPost();
+	
+	// Check which mode we're in
+	const popularDataEl = document.getElementById('popular-posts-data');
+	const dynamicList = document.getElementById('popular-list-dynamic');
+	
+	if (popularDataEl) {
+		// Static mode: JSON pool embedded, shuffle and render
+		initPopularFromPool();
+	} else if (dynamicList) {
+		// Dev mode: fetch from API
+		initPopularDev();
+	}
+}
+
+// Static mode: Render shuffled selection from embedded JSON pool
+function initPopularFromPool() {
+	const dataEl = document.getElementById('popular-posts-data');
+	const listEl = document.getElementById('popular-list');
+	if (!dataEl || !listEl) return;
+	
+	try {
+		const pool = JSON.parse(dataEl.textContent);
+		if (!pool || pool.length === 0) {
+			document.getElementById('sidebar-popular')?.remove();
+			return;
+		}
+		
+		// Shuffle the pool
+		const shuffled = shuffleArray([...pool]);
+		
+		// Take first 12 (SIDEBAR_POPULAR_LIMIT)
+		const selected = shuffled.slice(0, 12);
+		
+		// Render
+		listEl.innerHTML = selected.map(post => {
+			const title = escapeHtml(truncateText(post.title || post.path, 55));
+			const tagsHtml = post.tags && post.tags.length > 0
+				? `<span class="sidebar-tags">${post.tags.slice(0, 2).map(tag => 
+					`<a href="/tag/${encodeURIComponent(tag)}/">#${escapeHtml(tag)}</a>`
+				).join(' ')}</span>`
+				: '';
+			return `<li><a href="/p/${post.path}/">${title}</a>${tagsHtml}</li>`;
+		}).join('');
+		
+		// Now apply mobile sidebar logic
+		initMobileSidebar();
+		
+	} catch (e) {
+		console.error('Failed to parse popular posts data:', e);
+	}
+}
+
+// Fisher-Yates shuffle
+function shuffleArray(array) {
+	for (let i = array.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[array[i], array[j]] = [array[j], array[i]];
+	}
+	return array;
+}
+
+// Truncate text to max length
+function truncateText(text, maxLength) {
+	if (!text || text.length <= maxLength) return text;
+	return text.substring(0, maxLength - 3) + '...';
+}
+
+// Mobile: Move sidebar after 5th post, limit visible popular posts
+function initMobileSidebar() {
+	// Only on mobile (< 768px)
+	if (window.innerWidth >= 768) return;
+	
+	const sidebar = document.getElementById('sidebar');
+	const postsList = document.getElementById('posts');
+	if (!sidebar || !postsList) return;
+	
+	// Get all post items (li.h-entry)
+	const posts = postsList.querySelectorAll('li.h-entry');
+	if (posts.length < 5) return;
+	
+	// Move sidebar after the 5th post
+	posts[4].after(sidebar);
+	sidebar.classList.add('sidebar-inline-mobile');
+	
+	// Limit visible popular posts to 5 on mobile
+	const popularList = sidebar.querySelector('.sidebar-popular ul');
+	if (!popularList) return;
+	
+	const popularItems = popularList.querySelectorAll('li');
+	if (popularItems.length <= 5) return;
+	
+	// Hide posts 6+
+	popularItems.forEach((item, i) => {
+		if (i >= 5) item.classList.add('popular-hidden-mobile');
+	});
+	
+	// Add "Show more" button
+	const showMoreBtn = document.createElement('button');
+	showMoreBtn.className = 'popular-show-more';
+	showMoreBtn.textContent = 'Show more';
+	showMoreBtn.onclick = () => {
+		popularItems.forEach(item => item.classList.remove('popular-hidden-mobile'));
+		showMoreBtn.remove();
+	};
+	popularList.after(showMoreBtn);
+}
+
+// Welcome message using localStorage
+function initWelcomeMessage() {
+	const welcomeEl = document.getElementById('sidebar-welcome');
+	if (!welcomeEl) return;
+	
+	const STORAGE_KEY = 'samim_last_visit';
+	const now = new Date();
+	const lastVisitStr = localStorage.getItem(STORAGE_KEY);
+	
+	if (!lastVisitStr) {
+		// First visit - store timestamp, don't show welcome
+		localStorage.setItem(STORAGE_KEY, now.toISOString());
+		return;
+	}
+	
+	// Return visitor
+	const lastVisit = new Date(lastVisitStr);
+	
+	// Count new posts since last visit
+	countNewPostsSince(lastVisit).then(newCount => {
+		const welcomeText = welcomeEl.querySelector('.welcome-text');
+		const newPostsEl = welcomeEl.querySelector('.welcome-new-posts');
+		
+		if (welcomeText) {
+			welcomeText.textContent = 'Welcome back!';
+		}
+		
+		if (newPostsEl && newCount > 0) {
+			const postWord = newCount === 1 ? 'post' : 'posts';
+			const dateStr = formatLastVisitDate(lastVisit);
+			if (newCount >= 50) {
+				newPostsEl.textContent = `50+ new ${postWord} since ${dateStr}`;
+			} else {
+				newPostsEl.textContent = `${newCount} new ${postWord} since ${dateStr}`;
+			}
+		} else if (newPostsEl) {
+			newPostsEl.style.display = 'none';
+		}
+		
+		// Show the welcome section
+		welcomeEl.style.display = 'block';
+		
+		// Update last visit timestamp
+		localStorage.setItem(STORAGE_KEY, now.toISOString());
+	});
+}
+
+function formatLastVisitDate(date) {
+	const now = new Date();
+	const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+	
+	if (diffDays === 0) return 'earlier today';
+	if (diffDays === 1) return 'yesterday';
+	if (diffDays < 7) return `${diffDays} days ago`;
+	if (diffDays < 30) {
+		const weeks = Math.floor(diffDays / 7);
+		return weeks === 1 ? 'last week' : `${weeks} weeks ago`;
+	}
+	
+	// For longer periods, show the date
+	return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+async function countNewPostsSince(lastVisit) {
+	// Get site path prefix
+	const siteElement = document.getElementById('site');
+	let pathPrefix = '';
+	if (siteElement && siteElement.dataset.sitePathPrefix) {
+		pathPrefix = siteElement.dataset.sitePathPrefix.replace(/\/$/, '');
+	}
+	
+	try {
+		// Fetch posts.json which contains all post dates
+		const response = await fetch(`${pathPrefix}/posts.json`);
+		if (!response.ok) return 0;
+		
+		const posts = await response.json();
+		const lastVisitTime = lastVisit.getTime();
+		
+		// Count posts published after last visit
+		let count = 0;
+		for (const post of posts) {
+			if (post.date) {
+				const postDate = new Date(post.date);
+				if (postDate.getTime() > lastVisitTime) {
+					count++;
+					if (count >= 50) break; // Cap at 50
+				}
+			}
+		}
+		
+		return count;
+	} catch (e) {
+		console.warn('Could not count new posts:', e);
+		return 0;
+	}
+}
+
+// Random post button
+function initRandomPost() {
+	const randomBtns = document.querySelectorAll('#random-post-nav, #random-post-btn');
+	if (randomBtns.length === 0) return;
+	
+	randomBtns.forEach(btn => {
+		btn.addEventListener('click', async (e) => {
+			e.preventDefault();
+			await navigateToRandomPost();
+		});
+	});
+}
+
+async function navigateToRandomPost() {
+	// Get site path prefix
+	const siteElement = document.getElementById('site');
+	let pathPrefix = '';
+	if (siteElement && siteElement.dataset.sitePathPrefix) {
+		pathPrefix = siteElement.dataset.sitePathPrefix.replace(/\/$/, '');
+	}
+	
+	try {
+		const response = await fetch(`${pathPrefix}/posts.json`);
+		if (!response.ok) {
+			console.error('Could not load posts index');
+			return;
+		}
+		
+		const posts = await response.json();
+		if (posts.length === 0) return;
+		
+		// Pick a random post
+		const randomPost = posts[Math.floor(Math.random() * posts.length)];
+		
+		// Navigate to it
+		window.location.href = randomPost.url;
+	} catch (e) {
+		console.error('Random post navigation failed:', e);
+	}
+}
+
+// Dev mode: Load Popular posts via API
+function initPopularDev() {
+	const dynamicList = document.getElementById('popular-list-dynamic');
+	if (!dynamicList) return;
+	
+	// Fetch from analytics API
+	fetch('/analytics/api/popular')
+		.then(r => r.ok ? r.json() : null)
+		.then(data => {
+			if (!data || !data.posts || data.posts.length === 0) {
+				// No data - hide the section
+				const popularSection = document.getElementById('sidebar-popular');
+				if (popularSection) popularSection.style.display = 'none';
+				return;
+			}
+			
+			// Shuffle and take 12 for variety
+			const shuffled = shuffleArray([...data.posts]);
+			const selected = shuffled.slice(0, 12);
+			
+			// Render the posts with tags
+			dynamicList.innerHTML = selected.map(post => {
+				const title = escapeHtml(truncateText(post.title || post.path, 55));
+				const tagsHtml = post.tags && post.tags.length > 0
+					? `<span class="sidebar-tags">${post.tags.slice(0, 2).map(tag => 
+						`<a href="/tag/${encodeURIComponent(tag)}/">#${escapeHtml(tag)}</a>`
+					).join(' ')}</span>`
+					: '';
+				return `<li><a href="/p/${post.path}/">${title}</a>${tagsHtml}</li>`;
+			}).join('');
+			
+			// Now that posts are loaded, apply mobile sidebar logic
+			initMobileSidebar();
+		})
+		.catch(e => {
+			console.warn('Could not load popular posts:', e);
+			const popularSection = document.getElementById('sidebar-popular');
+			if (popularSection) popularSection.style.display = 'none';
+		});
+}
+
+// Initialize sidebar on DOM ready
+document.addEventListener('DOMContentLoaded', initSidebar);
