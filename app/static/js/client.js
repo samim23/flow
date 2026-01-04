@@ -248,72 +248,131 @@ function formatContentHeight(element) {
 		!element.classList.contains("content_open")
 	) {
 		element.classList.add("content_open");
-		const images = element.querySelectorAll("img");
+		
+		// Check and apply collapse based on current state
+		applyCollapseIfNeeded(element);
+		
+		// Use ResizeObserver to catch ANY height changes (images loading, flow-embeds 
+		// rendering, lazy content, iframes, videos, etc.) - more robust than specific listeners
+		if (typeof ResizeObserver !== 'undefined') {
+			let lastHeight = element.offsetHeight;
+			const resizeObserver = new ResizeObserver((entries) => {
+				for (const entry of entries) {
+					const newHeight = entry.contentRect.height;
+					// Only re-check if height increased significantly (avoid minor fluctuations)
+					if (newHeight > lastHeight + 50) {
+						lastHeight = newHeight;
+						applyCollapseIfNeeded(element);
+					}
+				}
+			});
+			
+			resizeObserver.observe(element);
+			
+			// Disconnect after 15 seconds - by then all content should be loaded
+			// Also disconnect if collapse was applied (no need to keep watching)
+			const cleanup = () => {
+				resizeObserver.disconnect();
+			};
+			
+			setTimeout(cleanup, 15000);
+			
+			// Store cleanup function so we can disconnect when collapse is applied
+			element._resizeCleanup = cleanup;
+		} else {
+			// Fallback for older browsers: use image load events
+			const images = element.querySelectorAll("img");
+			images.forEach(img => {
+				if (!img.complete) {
+					img.addEventListener("load", () => {
+						applyCollapseIfNeeded(element);
+					}, { once: true });
+				}
+			});
+		}
+	}
+}
 
-		if (element.offsetHeight > 640 || images.length > 10) {
-			element.classList.add("content_shortend");
-			const initialHeight = element.offsetHeight + "px";
+// Helper function to apply collapse if element exceeds height threshold
+function applyCollapseIfNeeded(element) {
+	// Skip if already collapsed
+	if (element.classList.contains("content_shortend")) return;
+	
+	const images = element.querySelectorAll("img");
+	const flowEmbeds = element.querySelectorAll("flow-embed");
+	
+	// Also count flow-embeds as "heavy" content that warrants collapse
+	const hasHeavyContent = flowEmbeds.length > 3;
+	
+	if (element.offsetHeight > 640 || images.length > 10 || hasHeavyContent) {
+		element.classList.add("content_shortend");
+		const initialHeight = element.offsetHeight + "px";
+		
+		// Clean up ResizeObserver since we've applied the collapse
+		if (element._resizeCleanup) {
+			element._resizeCleanup();
+			delete element._resizeCleanup;
+		}
+		element.style.height = initialHeight;
+
+		const showmore = document.createElement("div");
+		showmore.className = "showmore";
+		element.parentNode.insertBefore(showmore, element);
+
+		const btnShowmore = document.createElement("div");
+		btnShowmore.className = "btn_showmore";
+		btnShowmore.textContent = "Read More ▼";
+		element.parentNode.insertBefore(btnShowmore, element.nextSibling);
+
+		const expandContent = () => {
+			const fadeSpeed = 250;
+			element.style.height = "auto";
+			const fullHeight = element.offsetHeight;
 			element.style.height = initialHeight;
 
-			const showmore = document.createElement("div");
-			showmore.className = "showmore";
-			element.parentNode.insertBefore(showmore, element);
+			let duration = (fullHeight - parseInt(initialHeight)) / 10;
+			duration = Math.min(duration, 150);
+			duration += fadeSpeed;
 
-			const btnShowmore = document.createElement("div");
-			btnShowmore.className = "btn_showmore";
-			btnShowmore.textContent = "Read More ▼";
-			element.parentNode.insertBefore(btnShowmore, element.nextSibling);
+			showmore.style.transition = `opacity ${fadeSpeed}ms`;
+			showmore.style.opacity = "0";
+			btnShowmore.style.transition = `opacity ${fadeSpeed}ms`;
+			btnShowmore.style.opacity = "0";
 
-			const expandContent = () => {
-				const fadeSpeed = 250;
+			element.style.transition = `height ${duration}ms`;
+			element.style.height = fullHeight + "px";
+
+			setTimeout(() => {
+				showmore.remove();
+				btnShowmore.remove();
 				element.style.height = "auto";
-				const fullHeight = element.offsetHeight;
-				element.style.height = initialHeight;
+				element.style.transition = "";
+				element.classList.remove("content_shortend");
 
-				let duration = (fullHeight - parseInt(initialHeight)) / 10;
-				duration = Math.min(duration, 150);
-				duration += fadeSpeed;
+				// Re-run formatMedia to ensure all images have proper handlers
+				formatMedia();
 
-				showmore.style.transition = `opacity ${fadeSpeed}ms`;
-				showmore.style.opacity = "0";
-				btnShowmore.style.transition = `opacity ${fadeSpeed}ms`;
-				btnShowmore.style.opacity = "0";
+				const thispage = element.parentNode
+					.querySelector(".post_date")
+					.getAttribute("href");
+				const thispagetitle = element.parentNode.querySelector(
+					".post_date_title .post_date"
+				).textContent;
+				
+				// Only use analytics if _paq is defined
+				if (typeof _paq !== 'undefined') {
+					_paq.push(["trackEvent", "postopen", thispage]);
+					// Check if href is already absolute URL (static site) or relative (dev)
+					const url = thispage.startsWith('http') ? thispage : window.location.origin + thispage;
+					_paq.push(["setDocumentTitle", thispagetitle]);
+					_paq.push(["setCustomUrl", url]);
+					_paq.push(["trackPageView"]);
+				}
+			}, duration);
+		};
 
-				element.style.transition = `height ${duration}ms`;
-				element.style.height = fullHeight + "px";
-
-				setTimeout(() => {
-					showmore.remove();
-					btnShowmore.remove();
-					element.style.height = "auto";
-					element.style.transition = "";
-					element.classList.remove("content_shortend");
-
-					// Re-run formatMedia to ensure all images have proper handlers
-					formatMedia();
-
-					const thispage = element.parentNode
-						.querySelector(".post_date")
-						.getAttribute("href");
-					const thispagetitle = element.parentNode.querySelector(
-						".post_date_title .post_date"
-					).textContent;
-					
-					// Only use analytics if _paq is defined
-					if (typeof _paq !== 'undefined') {
-						_paq.push(["trackEvent", "postopen", thispage]);
-						// Check if href is already absolute URL (static site) or relative (dev)
-						const url = thispage.startsWith('http') ? thispage : window.location.origin + thispage;
-						_paq.push(["setDocumentTitle", thispagetitle]);
-						_paq.push(["setCustomUrl", url]);
-						_paq.push(["trackPageView"]);
-					}
-				}, duration);
-			};
-
-			showmore.addEventListener("click", expandContent);
-			btnShowmore.addEventListener("click", expandContent);
-		}
+		showmore.addEventListener("click", expandContent);
+		btnShowmore.addEventListener("click", expandContent);
 	}
 }
 
