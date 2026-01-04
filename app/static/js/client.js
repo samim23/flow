@@ -71,7 +71,7 @@ class ImageGallery {
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.9);
-            z-index: 1002;
+            z-index: 100002;
             justify-content: center;
             align-items: center;
         `;
@@ -586,7 +586,7 @@ galleryStyles.textContent = `
         padding: 20px;
         cursor: pointer;
         font-size: 24px;
-        z-index: 1003;
+        z-index: 100001;
     }
     .gallery-nav.prev { left: 20px; }
     .gallery-nav.next { right: 20px; }
@@ -599,7 +599,7 @@ galleryStyles.textContent = `
         color: white;
         font-size: 40px;
         cursor: pointer;
-        z-index: 1003;
+        z-index: 100001;
     }
     .gallery-image-container {
         display: flex;

@@ -21,7 +21,7 @@
           {%- endif -%}
         </div>
         {%- if page.html -%}
-        <div class="e-content content_main">
+        <div class="e-content content_main{% if page.meta.custom_css_class %} {{ page.meta.custom_css_class }}{% endif %}">
           {{ page.html|safe }}
         </div>
         {%- endif -%}
