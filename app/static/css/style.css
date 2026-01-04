@@ -201,8 +201,7 @@ blockquote p {
 }
 
 .text-serif p,
-.text-serif li,
-.text-serif figcaption {
+.text-serif li {
   font-family: "FeatureFlatHeadline", "Georgia", "Times New Roman", "Times", serif;
   font-size: 1.18rem;
   line-height: 1.75; 
@@ -448,12 +447,31 @@ mark{
 
 .hashtag-link {
   background-color: rgba(0, 0, 0, 0);
-  padding: 5px 5px 3.5px 5px;
+  padding: 5px 5px 3px 5px;
   border-radius: 5px;
   text-decoration: none !important;
   font-size: 14px;
   color: #131313;
   border: 1px solid rgba(0, 0, 0, 0.8);
+  font-family:
+    'SuisseIntl',
+    ui-sans-serif,
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    Segoe UI,
+    Roboto,
+    Ubuntu,
+    Cantarell,
+    Noto Sans,
+    sans-serif,
+    "Helvetica Neue",
+    Helvetica,
+    Apple Color Emoji,
+    Arial,
+    sans-serif,
+    Segoe UI Emoji,
+    Segoe UI Symbol;
 }
 
 .hashtag-link:hover {

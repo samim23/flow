@@ -479,7 +479,6 @@ async function loadPageFromURL(url) {
 				_paq.push(["setDocumentTitle", url]);
 				_paq.push(["setCustomUrl", url]);
 				_paq.push(["setGenerationTimeMs", Date.now() - timeItTookToLoadPage]);
-				_paq.push(["enableLinkTracking"]);
 				_paq.push(["trackPageView"]);
 			}
 
