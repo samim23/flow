@@ -370,6 +370,43 @@ function editor_setup(container, editor) {
 						}
 					}
 				},
+				// Image display styles - shown in toolbar when clicking an image
+				styles: {
+					wide: {
+						label: '<span class="fa fa-arrows-h" title="Wide"></span>'
+					},
+					left: {
+						label: '<span class="fa fa-align-left" title="Float Left"></span>'
+					},
+					right: {
+						label: '<span class="fa fa-align-right" title="Float Right"></span>'
+					},
+					bleed: {
+						label: '<span class="fa fa-expand" title="Full Bleed"></span>'
+					},
+					feature: {
+						label: '<span class="fa fa-star-o" title="Feature"></span>'
+					},
+					framed: {
+						label: '<span class="fa fa-picture-o" title="Framed"></span>'
+					},
+					offset: {
+						label: '<span class="fa fa-indent" title="Offset Left"></span>'
+					},
+					rounded: {
+						label: '<span class="fa fa-circle-o" title="Rounded"></span>'
+					}
+				},
+				actions: {
+					remove: {
+						label: '<span class="fa fa-times" title="Remove"></span>',
+						clicked: function ($el) {
+							var $event = $.Event("keydown");
+							$event.which = 8;
+							$(document).trigger($event);
+						}
+					}
+				}
 			},
 			embeds: {
 				// (object) Embeds addon configuration
