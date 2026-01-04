@@ -1,0 +1,227 @@
+# 🔗 Network Kit
+
+> **Generated**: [Date]  
+> **Agent**: Network Cultivation Agent  
+> This file is refreshed each session with current network priorities.
+> Check `agent-log.md` PART 10 for network activity history.
+
+---
+
+## 📊 Current Network State
+
+| Metric | This Week | Total |
+|--------|-----------|-------|
+| Outreach sent | 0 | 0 |
+| Awaiting response | 0 | 0 |
+| Connections made | 0 | 0 |
+
+**Weekly target**: 3-10 outreach attempts (scale based on capacity)
+
+---
+
+## 🎯 This Week's Outreach Queue
+
+> Prioritized list of outreach to execute this week.
+> Focus on low-effort, high-hit-rate tactics first.
+
+| Priority | Person | Post/Topic | Tactic | Effort | Status |
+|----------|--------|------------|--------|--------|--------|
+| 1 | [Name] | [Topic] | Newsletter Reply | Low | ⬜ |
+| 2 | | | | | ⬜ |
+| 3 | | | | | ⬜ |
+
+---
+
+## 🎯 Priority Outreach Targets (By Post)
+
+> For each **outreach-worthy** post, identify 3-5 people who should know about it.
+> 
+> **Outreach-worthy** = you can imagine sending it to a specific person.
+> This could be a long essay OR a short punchy take that directly engages someone's work.
+> 
+> **Not every post needs outreach** — aim for 3-5 outreach-worthy posts per week.
+
+### Post: [Post Title]
+
+**URL**: [Post URL]  
+**Topic**: [Main themes]
+
+#### Target 1: [Name]
+
+| Field | Details |
+|-------|---------|
+| **Who** | [Name, @handle, affiliation] |
+| **Their work** | [What they've written/said on this topic] |
+| **Why reach out** | [Genuine connection point] |
+| **Where** | [Platform: Twitter, Substack, email, etc.] |
+| **Recent activity** | [Did they recently discuss this?] |
+| **Tactic** | [Newsletter Reply / Helpful DM / Response Post / etc.] |
+| **Effort** | [Low / Medium / High] |
+| **Warm intro?** | [Do we know anyone who knows them?] |
+
+**Draft outreach**:
+```
+[Ready-to-personalize message]
+```
+
+**Status**: ⬜ Not contacted
+
+> **Status key**: ⬜ Not contacted | 📤 Sent | ⏳ Awaiting response | 💬 Replied | 🤝 Connected
+
+---
+
+## 📝 Response Post Opportunities
+
+Recent posts from interesting people that merit substantive engagement:
+
+| Author | Post | Our Angle | Priority |
+|--------|------|-----------|----------|
+| | | | |
+
+**What makes a good response post**:
+- Substantive engagement with their ideas (not just "great post!")
+- Builds on, extends, or respectfully disagrees
+- Creates a reason for them to engage back
+
+---
+
+## 📚 Citation Opportunities
+
+People/works to cite in upcoming posts:
+
+| Person | Their Work | Relevant To | Notes |
+|--------|------------|-------------|-------|
+| | | | |
+
+**Why cite generously**:
+- Creates natural conversation openers
+- "I wrote about X and cited your work on Y"
+- People ego-search and notice
+
+---
+
+## 🎙️ Podcast Opportunities
+
+Podcasts that cover topics we write about:
+
+| Podcast | Topic Match | Contact | Pitch Angle |
+|---------|-------------|---------|-------------|
+| | | | |
+
+**Draft pitch template**:
+```
+Subject: Guest pitch: [Topic]
+
+Hi [Name],
+
+I recently wrote about [topic] and thought it might interest your audience.
+
+[1-2 sentences on the angle that would work for their show]
+
+The piece: [URL]
+
+Happy to discuss [specific aspect] that I think would make for good conversation.
+
+Best,
+[Name]
+```
+
+---
+
+## 📰 Newsletter Opportunities
+
+Newsletters that might feature our work or whose authors we'd like to connect with:
+
+| Newsletter | Author | Topic Match | Contact Method |
+|------------|--------|-------------|----------------|
+| | | | |
+
+**Reply template** (for when they publish something related):
+```
+Loved this issue, especially [specific point].
+
+I recently explored something adjacent — [one sentence on your post].
+Thought you might find it interesting: [URL]
+
+[Optional: specific question or point of engagement]
+```
+
+---
+
+## 🔍 Backlink Opportunities
+
+Sites that could link to our content:
+
+| Site/Post | Opportunity | Our Relevant Post | Status |
+|-----------|-------------|-------------------|--------|
+| | [Broken link / outdated ref / natural fit] | | |
+
+**How to find these**:
+- Search for posts on your topics
+- Look for broken links or outdated references
+- Offer your post as a replacement/update
+- Genuinely helpful, not spammy
+
+---
+
+## 🏷️ The 100 People List
+
+> Long-term targets: People we'd want to know and whose work we admire.
+> This list evolves over time. Not every post targets the 100, but they inform content direction.
+> **Primary list lives in agent-log.md PART 10** — this is the working subset.
+
+| Name | Field | Why Interesting | Warm Intro Via | Status |
+|------|-------|-----------------|----------------|--------|
+| | | | - | ⬜ |
+
+**Priority this week** (from the 100):
+1. [Name] — [Why now?]
+2. [Name] — [Why now?]
+3. [Name] — [Why now?]
+
+**Criteria for "interesting"**:
+- Working on ideas we care about
+- Have an audience we'd like to reach
+- Potential for collaboration
+- Could teach us something
+- We genuinely admire their work
+
+---
+
+## ✅ Recently Contacted
+
+| Person | Post | Method | Date | Response |
+|--------|------|--------|------|----------|
+| | | | | |
+
+---
+
+## 📈 Network Insights
+
+Learnings about what outreach works:
+
+- [Add learnings as you discover them]
+
+---
+
+## 💡 Session Notes
+
+[Agent notes on network opportunities identified this session]
+
+---
+
+## The 10 Network Tactics (Reference)
+
+1. **Generous Citation** — Cite to create conversation openers
+2. **Response Post** — Substantively engage with others' work
+3. **Curated Synthesis** — Become the hub for a topic
+4. **Newsletter Reply** — Intimate channel, high response rate
+5. **Interview Without Permission** — Analyze their public work
+6. **Helpful DM** — Share value, don't ask
+7. **Public Disagreement** — Respectful intellectual engagement
+8. **Podcast Pipeline** — Pitch relevant shows
+9. **Backlink Outreach** — Find broken links, offer replacement
+10. **Platform Scouting** — Find where people actually are
+
+See `agent.md` for detailed guidance on each tactic.
+

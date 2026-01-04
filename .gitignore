@@ -19,10 +19,11 @@ app/analytics/data/experiments/*.md
 app/analytics/data/goals/*.md
 app/analytics/data/agent-log.md
 app/analytics/data/distribution-kit.md
+app/analytics/data/network-kit.md
 # But keep the template/instruction files
 !app/analytics/data/experiments/_template.md
 !app/analytics/data/goals/_template.md
-# Note: agent.md, agent-log.md.example, and distribution-kit.md.example are tracked (templates)
+# Note: agent.md, *.example files are tracked as templates for other users
 
 # Sidebar config (user-specific preferences)
 app/data/sidebar-popular.txt
