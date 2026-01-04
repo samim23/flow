@@ -192,12 +192,20 @@ blockquote p {
   }
 }
 
-.text-serif {
+.text-serif-all {
   font-family: "FeatureFlatHeadline", "Georgia", "Times New Roman", "Times", serif;
   font-size: 1.0em;
   letter-spacing: .025px;
   font-weight: 230;
   font-variation-settings: "wght" 330,"opsz" 10;
+}
+
+.text-serif p,
+.text-serif li,
+.text-serif figcaption {
+  font-family: "FeatureFlatHeadline", "Georgia", "Times New Roman", "Times", serif;
+  font-size: 1.2rem;
+  line-height: 1.8;
 }
 
 button {
@@ -3039,7 +3047,7 @@ flow-embed {
 }
 
 .about-hero-intro {
-  font-family: "FeatureFlatHeadline", Georgia, serif;
+  font-family: "FeatureFlatHeadline", "Georgia", serif;
   font-size: 1.55rem;
   line-height: 1.6;
   color: #4a4a4a;
@@ -3163,7 +3171,7 @@ flow-embed {
 }
 
 .about-bio {
-  font-family: "FeatureFlatHeadline", Georgia, serif;
+  font-family: "FeatureFlatHeadline", "Georgia", serif;
   font-size: 1.15rem;
   line-height: 1.7;
   color: #333;
