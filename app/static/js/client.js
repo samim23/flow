@@ -1235,8 +1235,8 @@ function truncateText(text, maxLength) {
 
 // Mobile: Move sidebar after 5th post, limit visible popular posts
 function initMobileSidebar() {
-	// Only on mobile (< 768px)
-	if (window.innerWidth >= 768) return;
+	// Only when sidebar is hidden (< 1420px)
+	if (window.innerWidth >= 1420) return;
 	
 	const sidebar = document.getElementById('sidebar');
 	const postsList = document.getElementById('posts');
