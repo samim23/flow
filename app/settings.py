@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     # File paths
     local_upload_path: Path = Path("upload/")
     local_build_path: Path = Path("build/")
-    allowed_extensions: Set[str] = {"png", "jpg", "jpeg", "gif", "webp"}
+    allowed_extensions: Set[str] = {"png", "jpg", "jpeg", "gif", "webp", "avif"}
 
     # Asset settings
     content_dir: Path = Path("content/p/")

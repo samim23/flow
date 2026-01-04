@@ -2084,11 +2084,13 @@ img.mfp-img {
   * Address differences between Firefox and other browsers.
   */
 
- hr {
-     -moz-box-sizing: content-box;
-     box-sizing: content-box;
-     height: 0;
- }
+hr {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(0,0,0,0.15), transparent);
+  max-width: 120px;
+  margin: 2em auto;
+}
 
  /**
   * Address styling not present in IE 8/9.

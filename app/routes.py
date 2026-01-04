@@ -716,7 +716,7 @@ async def upload(request: Request, file: UploadFile = File(...)):
         # Convert images to WebP (except animated GIFs)
         # This reduces file size by ~40-60% with quality 90
         original_ext = filename.lower().rsplit('.', 1)[-1] if '.' in filename else ''
-        if original_ext in {'png', 'jpg', 'jpeg', 'gif'}:
+        if original_ext in {'png', 'jpg', 'jpeg', 'gif', 'avif'}:
             content, filename = convert_to_webp(content, filename, quality=90)
             logger.info(f"Converted image to WebP: {filename}")
         

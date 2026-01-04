@@ -248,7 +248,7 @@ function editor_setup(container, editor) {
 				fileUploadOptions: {
 					url: "/upload",
 					paramName: "file",
-					acceptFileTypes: /(\.|\/)(gif|jpe?g|png|webp)$/i,
+					acceptFileTypes: /(\.|\/)(gif|jpe?g|png|webp|avif)$/i,
 					singleFileUploads: true,
 					sequentialUploads: true,
 					add: function (e, data) {

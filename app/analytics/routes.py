@@ -1363,7 +1363,7 @@ async def agent_upload_image(request: Request):
         
         # Convert to WebP (except animated GIFs)
         original_ext = filename.lower().rsplit('.', 1)[-1] if '.' in filename else ''
-        if original_ext in {'png', 'jpg', 'jpeg', 'gif'}:
+        if original_ext in {'png', 'jpg', 'jpeg', 'gif', 'avif'}:
             content, filename = convert_to_webp(content, filename, quality=90)
             logger.info(f"Converted image to WebP: {filename}")
         
