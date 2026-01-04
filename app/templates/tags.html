@@ -2,7 +2,6 @@
 {% block content %}
 <div class="tags-header">
     <h2 class="page_title">Topics</h2>
-    <a href="{{ request.url_for('explore') }}" class="tags-explore-btn">🕒 Explore</a>
 </div>
 
 {# Tag Spotlights - visual discovery first #}
@@ -243,4 +242,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initTagSpotlights();
 });
 </script>
+
+{# Timeline exploration - merged from /explore #}
+{% include '_explore_chart.html' %}
+
 {% endblock content %}

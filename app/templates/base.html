@@ -190,83 +190,85 @@
   <div id="site" site="{{app.site_url}}" data-site-path-prefix="{{ app.site_path_prefix }}" author="{{app.author}}" author_name="{{app.author_name}}" author_image="{{app.author_image}}">
   {%- endif %}
     <header id="top-container">
-      <div id="site_logo">
-        {%- if request.url_path == "/" -%}
-        <h1><a id="site_logo_icon" href="{{ request.url_for("index") }}">{{app.site_name}}</a></h1>
-        {%- else -%}
-        <h1><a id="site_logo_icon" href="{{ request.url_for("index") }}">{{app.site_name}}</a></h1>
-        {%- endif -%}
-      </div>
-
-      {%- if freeze==1 -%}
-      <div class="post_static_container">
-        {%- if is_live_mode or app.build_search_index -%}
-        <div class="post_static">
-          {%- if is_live_mode -%}
-          <a title="Search" href="{{ request.url_for('search') }}">🔍</a>
+      <div id="top-content">
+        <div id="site_logo">
+          {%- if request.url_path == "/" -%}
+          <h1><a id="site_logo_icon" href="{{ request.url_for("index") }}">{{app.site_name}}</a></h1>
           {%- else -%}
-          <a title="Search" href="#" id="search-toggle">🔍</a>
+          <h1><a id="site_logo_icon" href="{{ request.url_for("index") }}">{{app.site_name}}</a></h1>
           {%- endif -%}
         </div>
-        {%- endif -%}
-        <div class="post_static">
-          <a title="Tags" href="{{ request.url_for('tags') }}">tags</a>
+
+        {%- if freeze==1 -%}
+        <div class="post_static_container">
+          {%- if is_live_mode or app.build_search_index -%}
+          <div class="post_static">
+            {%- if is_live_mode -%}
+            <a title="Search" href="{{ request.url_for('search') }}">🔍</a>
+            {%- else -%}
+            <a title="Search" href="#" id="search-toggle">🔍</a>
+            {%- endif -%}
+          </div>
+          {%- endif -%}
+          <div class="post_static">
+            <a title="Tags" href="{{ request.url_for('tags') }}">tags</a>
+          </div>
+          <div class="post_static"><a title="About" href="{{ request.url_for('page', path='about') }}">about</a></div>
+          {%- if app.newsletter_url -%}
+          <div class="post_static"><a title="Subscribe to newsletter" href="{{ app.newsletter_url }}" target="_blank" rel="noopener" class="newsletter-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <span>newsletter</span>
+          </a></div>
+          {%- endif -%}
+          <div class="post_static"><a title="Random post" href="#" id="random-post-nav" class="random-post-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/>
+              <circle cx="16" cy="8" r="1.5" fill="currentColor" stroke="none"/>
+              <circle cx="8" cy="16" r="1.5" fill="currentColor" stroke="none"/>
+              <circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none"/>
+              <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+            </svg>
+          </a></div>
+          {%- if is_live_mode and not is_authenticated -%}
+          <div class="post_static"><a title="Login to edit" href="{{ request.url_for('login') }}">login</a></div>
+          {%- endif -%}
         </div>
-        <div class="post_static"><a title="About" href="{{ request.url_for('page', path='about') }}">about</a></div>
-        {%- if app.newsletter_url -%}
-        <div class="post_static"><a title="Subscribe to newsletter" href="{{ app.newsletter_url }}" target="_blank" rel="noopener" class="newsletter-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-            <polyline points="22,6 12,13 2,6"></polyline>
-          </svg>
-          <span>subscribe</span>
-        </a></div>
-        {%- endif -%}
-        <div class="post_static"><a title="Random post" href="#" id="random-post-nav" class="random-post-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/>
-            <circle cx="16" cy="8" r="1.5" fill="currentColor" stroke="none"/>
-            <circle cx="8" cy="16" r="1.5" fill="currentColor" stroke="none"/>
-            <circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none"/>
-            <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
-          </svg>
-        </a></div>
-        {%- if is_live_mode and not is_authenticated -%}
-        <div class="post_static"><a title="Login to edit" href="{{ request.url_for('login') }}">login</a></div>
-        {%- endif -%}
+        {%- else -%}
+        <nav id="editor_tools">
+          <div class="post_static" data-jq-dropdown="#jq-dropdown-publish" data-horizontal-offset="6" class="post_dropdown"><a title="Deploy to live site" href="/"><i class="fa fa-bolt search_icon"></i>deploy</a></div>
+          <div class="post_static"><a title="Analytics Dashboard" href="/analytics/">analytics</a></div>
+          <div class="post_static"><a title="search" href="{{ request.url_for('search') }}"><i class="fa fa-search search_icon"></i>search</a></div>
+          <div class="post_static"><a title="tags" href="{{ request.url_for('tags') }}">tags</a></div>
+          <div class="post_static"><a title="about" href="{{ request.url_for('page', path='about') }}">about</a></div>
+          {%- if app.newsletter_url -%}
+          <div class="post_static"><a title="Subscribe to newsletter" href="{{ app.newsletter_url }}" target="_blank" rel="noopener" class="newsletter-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <span>newsletter</span>
+          </a></div>
+          {%- endif -%}
+          <div class="post_static"><a title="Random post" href="#" id="random-post-nav" class="random-post-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/>
+              <circle cx="16" cy="8" r="1.5" fill="currentColor" stroke="none"/>
+              <circle cx="8" cy="16" r="1.5" fill="currentColor" stroke="none"/>
+              <circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none"/>
+              <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+            </svg>
+          </a></div>
+          {%- if is_live_mode -%}
+          <div class="post_static"><a title="Logout" href="{{ request.url_for('logout') }}">logout</a></div>
+          {%- endif -%}
+        </nav>
+        {%- endif %}
       </div>
-      {%- else -%}
-      <nav id="editor_tools">
-        <div class="post_static" data-jq-dropdown="#jq-dropdown-publish" data-horizontal-offset="6" class="post_dropdown"><a title="Deploy to live site" href="/"><i class="fa fa-bolt search_icon"></i>deploy</a></div>
-        <div class="post_static"><a title="Analytics Dashboard" href="/analytics/">analytics</a></div>
-        <div class="post_static"><a title="search" href="{{ request.url_for('search') }}"><i class="fa fa-search search_icon"></i>search</a></div>
-        <div class="post_static"><a title="tags" href="{{ request.url_for('tags') }}">tags</a></div>
-        <div class="post_static"><a title="about" href="{{ request.url_for('page', path='about') }}">about</a></div>
-        {%- if app.newsletter_url -%}
-        <div class="post_static"><a title="Subscribe to newsletter" href="{{ app.newsletter_url }}" target="_blank" rel="noopener" class="newsletter-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-            <polyline points="22,6 12,13 2,6"></polyline>
-          </svg>
-          <span>subscribe</span>
-        </a></div>
-        {%- endif -%}
-        <div class="post_static"><a title="Random post" href="#" id="random-post-nav" class="random-post-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/>
-            <circle cx="16" cy="8" r="1.5" fill="currentColor" stroke="none"/>
-            <circle cx="8" cy="16" r="1.5" fill="currentColor" stroke="none"/>
-            <circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none"/>
-            <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
-          </svg>
-        </a></div>
-        {%- if is_live_mode -%}
-        <div class="post_static"><a title="Logout" href="{{ request.url_for('logout') }}">logout</a></div>
-        {%- endif -%}
-      </nav>
-      {%- endif %}
     </header>
     {%- if freeze==0 %}
     <div class="note_publish"></div>

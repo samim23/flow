@@ -658,6 +658,77 @@ document.addEventListener("DOMContentLoaded", () => {
 	// Initialize gallery first
 	gallery = new ImageGallery();
 
+	// Smart sticky header: natural scroll at top, then hide/show on direction
+	const header = document.getElementById("top-container");
+	if (header) {
+		let lastScrollY = 0;
+		let headerHeight = header.offsetHeight;
+		const scrollDelta = 10;
+		let inNaturalZone = true;
+		let returningToTop = false;
+		
+		window.addEventListener("scroll", () => {
+			const currentScrollY = window.scrollY;
+			
+			// In the natural zone (near top of page)
+			if (currentScrollY <= headerHeight) {
+				
+				// Coming back from smart sticky with header visible?
+				if (!inNaturalZone && !header.classList.contains("header-hidden")) {
+					returningToTop = true;
+				}
+				
+				// If returning to top, wait until we're actually at the top
+				if (returningToTop) {
+					if (currentScrollY < 5) {
+						// At the top - reset everything cleanly
+						returningToTop = false;
+						header.classList.remove("scrolled", "header-hidden", "header-animate");
+						header.style.transform = "";
+					}
+					// Keep header as-is while returning
+					inNaturalZone = true;
+					lastScrollY = currentScrollY;
+					return;
+				}
+				
+				// Normal natural scroll - header moves with content
+				header.classList.remove("scrolled", "header-hidden", "header-animate");
+				header.style.transform = `translateY(-${currentScrollY}px)`;
+				lastScrollY = currentScrollY;
+				inNaturalZone = true;
+				return;
+			}
+			
+			// Just exited natural zone - ensure header is hidden, no animation yet
+			if (inNaturalZone) {
+				header.style.transform = "";
+				header.classList.add("header-hidden");
+				header.classList.add("scrolled");
+				// Enable animations after a tick
+				requestAnimationFrame(() => {
+					header.classList.add("header-animate");
+				});
+				inNaturalZone = false;
+				lastScrollY = currentScrollY;
+				return;
+			}
+			
+			// Past header height - smart sticky behavior with animations
+			const scrollDiff = currentScrollY - lastScrollY;
+			
+			if (scrollDiff > scrollDelta) {
+				// Scrolling down - hide header
+				header.classList.add("header-hidden");
+				lastScrollY = currentScrollY;
+			} else if (scrollDiff < -scrollDelta) {
+				// Scrolling up - show header
+				header.classList.remove("header-hidden");
+				lastScrollY = currentScrollY;
+			}
+		}, { passive: true });
+	}
+
 	const loadingElement = document.getElementById("loading");
 	if (loadingElement) {
 		loadingElement.style.display = "none";
@@ -1384,3 +1455,51 @@ function initPopularDev() {
 
 // Initialize sidebar on DOM ready
 document.addEventListener('DOMContentLoaded', initSidebar);
+
+// ============================================
+// Got a Tip? Form
+// ============================================
+function initTipForm() {
+	const textarea = document.getElementById('tip-textarea');
+	const submitBtn = document.getElementById('tip-submit');
+	const tipForm = document.getElementById('tip-form');
+	const tipThanks = document.getElementById('tip-thanks');
+	
+	if (!textarea || !submitBtn) return;
+	
+	// Show/hide submit button based on text content
+	textarea.addEventListener('input', () => {
+		const hasText = textarea.value.trim().length > 0;
+		submitBtn.style.display = hasText ? 'block' : 'none';
+	});
+	
+	// Handle form submission
+	submitBtn.addEventListener('click', () => {
+		const tipText = textarea.value.trim();
+		if (!tipText) return;
+		
+		// Create mailto link with pre-filled content (email obfuscated to deter scrapers)
+		const subject = encodeURIComponent('Tip for samim.io');
+		const body = encodeURIComponent(tipText);
+		const e = ['tip', 'samim', 'io'].join('@').replace('@io', '.io');
+		const mailtoUrl = `mailto:${e}?subject=${subject}&body=${body}`;
+		
+		// Open email client
+		window.location.href = mailtoUrl;
+		
+		// Show thank you message
+		tipForm.style.display = 'none';
+		tipThanks.style.display = 'flex';
+		
+		// Optional: Reset after some time so user can send another tip
+		setTimeout(() => {
+			textarea.value = '';
+			submitBtn.style.display = 'none';
+			tipForm.style.display = 'flex';
+			tipThanks.style.display = 'none';
+		}, 5000);
+	});
+}
+
+// Initialize tip form on DOM ready
+document.addEventListener('DOMContentLoaded', initTipForm);

@@ -971,7 +971,7 @@ class StaticSiteGenerator:
             raise
 
     async def generate_tags_overview(self):
-        """Generate tags overview page"""
+        """Generate tags overview page with timeline exploration"""
         try:
             # Get pages and ensure they're a list
             pages = list(self.content_manager.get_pages_by_status("public"))
@@ -990,9 +990,41 @@ class StaticSiteGenerator:
                 reverse=True
             )
             
+            # Build timeline stats for explore chart (merged into tags page)
+            sorted_pages = sorted(
+                pages,
+                key=lambda p: p.metadata.date or datetime(1970, 1, 1)
+            )
+            
+            final_stat = {'dates': [], 'posts': [], 'postsamount': []}
+            final_pages = []
+            post_amount = 0
+
+            for i, page in enumerate(sorted_pages):
+                date = page.metadata.date or datetime(1970, 1, 1)
+                current_date = date.strftime("%Y-%m-%d")
+                final_pages.append(page.path)
+                post_amount += 1
+
+                if i + 1 < len(sorted_pages):
+                    next_date = sorted_pages[i + 1].metadata.date or datetime(1970, 1, 1)
+                    next_date_str = next_date.strftime("%Y-%m-%d")
+
+                    if current_date != next_date_str:
+                        final_stat['dates'].append(current_date)
+                        final_stat['postsamount'].append(post_amount)
+                        final_stat['posts'].append(list(final_pages))
+                        post_amount = 0
+                        final_pages = []
+                else:
+                    final_stat['dates'].append(current_date)
+                    final_stat['postsamount'].append(post_amount)
+                    final_stat['posts'].append(list(final_pages))
+            
             context = self.get_template_context({
                 "tags": tags_list,
                 "postamount": len(pages),
+                "stats": final_stat,
                 "pageTitle": f"{self.settings.site_name} - Tags"
             })
             

@@ -209,9 +209,9 @@ async def archive(request: Request, num: str):
 # Tag routes
 @router.get("/tag/", name="tags", response_class=HTMLResponse)
 async def tags(request: Request):
-    """Tags overview page"""
+    """Tags overview page with timeline exploration"""
     content_manager = request.app.state.content_manager
-    pages = content_manager.get_pages_by_status("public")
+    pages = list(content_manager.get_pages_by_status("public"))
     
     # Collect tag statistics
     tag_stats = {}
@@ -230,10 +230,42 @@ async def tags(request: Request):
         reverse=True
     )
     
+    # Build timeline stats for explore chart
+    sorted_pages = sorted(
+        pages,
+        key=lambda p: p.date or datetime(1970, 1, 1)
+    )
+    
+    final_stat = {'dates': [], 'posts': [], 'postsamount': []}
+    final_pages = []
+    post_amount = 0
+
+    for i, page in enumerate(sorted_pages):
+        date = page.date or datetime(1970, 1, 1)
+        current_date = date.strftime("%Y-%m-%d")
+        final_pages.append(page.path)
+        post_amount += 1
+
+        if i + 1 < len(sorted_pages):
+            next_date = sorted_pages[i + 1].date or datetime(1970, 1, 1)
+            next_date_str = next_date.strftime("%Y-%m-%d")
+
+            if current_date != next_date_str:
+                final_stat['dates'].append(current_date)
+                final_stat['postsamount'].append(post_amount)
+                final_stat['posts'].append(final_pages)
+                post_amount = 0
+                final_pages = []
+        else:
+            final_stat['dates'].append(current_date)
+            final_stat['postsamount'].append(post_amount)
+            final_stat['posts'].append(final_pages)
+    
     context = {
         "pageTitle": f"{settings.site_name} - Tags",
         "tags": tags_list,
-        "postamount": len(pages)
+        "postamount": len(pages),
+        "stats": final_stat
     }
     
     return request.app.state.templates.TemplateResponse(

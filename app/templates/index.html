@@ -27,6 +27,25 @@
     </ul>
   </div>
   {% endif %}
+
+  {# Got a tip? section #}
+  <div class="sidebar-tip" id="sidebar-tip">
+    <h4>Got a tip?</h4>
+    <div class="tip-form" id="tip-form">
+      <textarea 
+        id="tip-textarea" 
+        placeholder="Share a link, idea, or feedback..."
+        rows="3"
+      ></textarea>
+      <button type="button" id="tip-submit" class="tip-submit-btn" style="display: none;">
+        Send Tip →
+      </button>
+    </div>
+    <div class="tip-thanks" id="tip-thanks" style="display: none;">
+      <span class="tip-thanks-icon">✓</span>
+      <span class="tip-thanks-text">Thanks for your tip!</span>
+    </div>
+  </div>
 </aside>
 {% endblock sidebar %}
 
