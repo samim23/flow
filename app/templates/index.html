@@ -18,8 +18,8 @@
     <ul id="popular-list"></ul>
     <script type="application/json" id="popular-posts-data">{{ popular_posts | tojson }}</script>
   </div>
-  {% elif freeze == 0 %}
-  {# Dev mode: async load #}
+  {% else %}
+  {# Dev/preview mode: async load from API #}
   <div class="sidebar-popular" id="sidebar-popular">
     <h4>Popular</h4>
     <ul id="popular-list-dynamic">

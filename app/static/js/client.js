@@ -1166,6 +1166,7 @@ document.addEventListener('DOMContentLoaded', initContentDiscovery);
 function initSidebar() {
 	initWelcomeMessage();
 	initRandomPost();
+	initTipForm();
 	
 	// Check which mode we're in
 	const popularDataEl = document.getElementById('popular-posts-data');
@@ -1177,6 +1178,9 @@ function initSidebar() {
 	} else if (dynamicList) {
 		// Dev mode: fetch from API
 		initPopularDev();
+	} else {
+		// No popular posts data - still need to init mobile sidebar
+		initMobileSidebar();
 	}
 }
 
@@ -1242,35 +1246,91 @@ function initMobileSidebar() {
 	const postsList = document.getElementById('posts');
 	if (!sidebar || !postsList) return;
 	
-	// Get all post items (li.h-entry)
-	const posts = postsList.querySelectorAll('li.h-entry');
-	if (posts.length < 5) return;
+	// Limit visible popular posts to 5 on mobile (do this first, before positioning)
+	limitPopularPosts(sidebar);
 	
-	// Move sidebar after the 5th post
-	posts[4].after(sidebar);
-	sidebar.classList.add('sidebar-inline-mobile');
+	// Try to position sidebar after 5th post
+	const tryPositionSidebar = () => {
+		const posts = Array.from(postsList.querySelectorAll('li.h-entry'));
+		
+		// Ideal: insert after 5th post
+		if (posts.length >= 5 && posts[4]) {
+			posts[4].after(sidebar);
+			sidebar.classList.add('sidebar-inline-mobile');
+			return true; // Success
+		}
+		return false; // Not enough posts yet
+	};
 	
-	// Limit visible popular posts to 5 on mobile
+	// Try immediately
+	if (tryPositionSidebar()) return;
+	
+	// Not enough posts yet - watch for more posts via MutationObserver
+	const observer = new MutationObserver((mutations) => {
+		if (tryPositionSidebar()) {
+			observer.disconnect(); // Stop watching once positioned
+		}
+	});
+	
+	observer.observe(postsList, { childList: true });
+	
+	// Fallback: if after 3 seconds we still don't have 5 posts, show after whatever we have
+	setTimeout(() => {
+		if (!sidebar.classList.contains('sidebar-inline-mobile')) {
+			const posts = Array.from(postsList.querySelectorAll('li.h-entry'));
+			if (posts.length > 0) {
+				const insertAt = Math.min(4, posts.length - 1);
+				posts[insertAt].after(sidebar);
+				sidebar.classList.add('sidebar-inline-mobile');
+			}
+			observer.disconnect();
+		}
+	}, 3000);
+}
+
+// Helper: Limit popular posts to 5 with "Show more" button
+function limitPopularPosts(sidebar) {
 	const popularList = sidebar.querySelector('.sidebar-popular ul');
 	if (!popularList) return;
 	
-	const popularItems = popularList.querySelectorAll('li');
-	if (popularItems.length <= 5) return;
-	
-	// Hide posts 6+
-	popularItems.forEach((item, i) => {
-		if (i >= 5) item.classList.add('popular-hidden-mobile');
-	});
-	
-	// Add "Show more" button
-	const showMoreBtn = document.createElement('button');
-	showMoreBtn.className = 'popular-show-more';
-	showMoreBtn.textContent = 'Show more';
-	showMoreBtn.onclick = () => {
-		popularItems.forEach(item => item.classList.remove('popular-hidden-mobile'));
-		showMoreBtn.remove();
+	// Wait a bit for popular posts to load (they load async)
+	const tryLimit = () => {
+		const popularItems = popularList.querySelectorAll('li:not(.loading-placeholder)');
+		if (popularItems.length <= 5) return false; // Not enough yet or already limited
+		
+		// Check if already limited
+		if (sidebar.querySelector('.popular-show-more')) return true;
+		
+		// Hide posts 6+
+		popularItems.forEach((item, i) => {
+			if (i >= 5) item.classList.add('popular-hidden-mobile');
+		});
+		
+		// Add "Show more" button
+		const showMoreBtn = document.createElement('button');
+		showMoreBtn.className = 'popular-show-more';
+		showMoreBtn.textContent = 'Show more';
+		showMoreBtn.onclick = () => {
+			popularItems.forEach(item => item.classList.remove('popular-hidden-mobile'));
+			showMoreBtn.remove();
+		};
+		popularList.after(showMoreBtn);
+		return true;
 	};
-	popularList.after(showMoreBtn);
+	
+	// Try immediately
+	if (tryLimit()) return;
+	
+	// Watch for popular posts to load
+	const observer = new MutationObserver(() => {
+		if (tryLimit()) {
+			observer.disconnect();
+		}
+	});
+	observer.observe(popularList, { childList: true });
+	
+	// Stop watching after 5 seconds
+	setTimeout(() => observer.disconnect(), 5000);
 }
 
 // Welcome message using localStorage
@@ -1501,5 +1561,4 @@ function initTipForm() {
 	});
 }
 
-// Initialize tip form on DOM ready
-document.addEventListener('DOMContentLoaded', initTipForm);
+// Tip form is initialized via initSidebar()
