@@ -174,14 +174,15 @@ hr{
   border: 1px solid #c2c2c2;
 }
 blockquote {
-  font-family: "FeatureFlatHeadline", "Georgia", "Times New Roman", "Times", serif;
-  font-size: 1.0em;
   border-left:  6px solid #E4E4E4;
   margin: 1.3em 0px;
   padding: 0em 20px;
-  letter-spacing: .025px;
-  font-weight: 230;
-  font-variation-settings: "wght" 330,"opsz" 10;
+  font-family: "FeatureFlatHeadline", "Georgia", "Times New Roman", "Times", serif;
+  font-size: 1.18rem;
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+  font-weight: 330;
+  font-variation-settings: "wght" 330, "opsz" 14; 
 }
 blockquote p {
   display: inline;
@@ -194,18 +195,22 @@ blockquote p {
 
 .text-serif-all {
   font-family: "FeatureFlatHeadline", "Georgia", "Times New Roman", "Times", serif;
-  font-size: 1.0em;
-  letter-spacing: .025px;
-  font-weight: 230;
-  font-variation-settings: "wght" 330,"opsz" 10;
+  font-size: 1.18rem;
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+  font-weight: 330;
+  font-variation-settings: "wght" 330, "opsz" 14;
 }
 
 .text-serif p,
 .text-serif li,
 .text-serif figcaption {
   font-family: "FeatureFlatHeadline", "Georgia", "Times New Roman", "Times", serif;
-  font-size: 1.2rem;
-  line-height: 1.8;
+  font-size: 1.18rem;
+  line-height: 1.75; 
+  letter-spacing: 0.01em;
+  font-weight: 330;
+  font-variation-settings: "wght" 330, "opsz" 14;
 }
 
 button {
