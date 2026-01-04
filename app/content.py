@@ -461,13 +461,21 @@ class ContentManager:
         
         return None
 
-    def get_pages_by_status(self, status: str, username: Optional[str] = None) -> List[Page]:
-        """Get all pages with a specific status"""
+    def get_pages_by_status(self, status: str, username: Optional[str] = None, include_future: bool = False) -> List[Page]:
+        """Get all pages with a specific status.
+        
+        By default, excludes posts with future dates (scheduled posts).
+        Set include_future=True to include all posts regardless of date.
+        """
+        now = datetime.now()
         pages = []
         for page in self.pages.values():
             if page.metadata.status != status:
                 continue
             if username and page.metadata.author != username:
+                continue
+            # Filter out future-dated posts unless explicitly requested
+            if not include_future and page.metadata.date > now:
                 continue
             pages.append(page)
         return sorted(pages, key=lambda p: p.metadata.date, reverse=True)

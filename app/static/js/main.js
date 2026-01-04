@@ -319,6 +319,7 @@ function editor_setup(container, editor) {
 						setTimeout(() => {
 							$(".note_publish").slideUp("slow", function () {
 								$("#submit_btn").show();
+								$("#schedule_btn").show();
 							});
 							$(".upload-overlay").fadeOut("slow", function () {
 								$(this).remove();
@@ -337,6 +338,7 @@ function editor_setup(container, editor) {
 							setTimeout(() => {
 								$(".note_publish").slideUp("slow", function () {
 									$("#submit_btn").show();
+									$("#schedule_btn").show();
 								});
 								$(".upload-overlay").fadeOut("slow", function () {
 									$(this).remove();
@@ -446,17 +448,19 @@ function editor_create(container, submit_btn) {
 
 		if (strip(elContent).length > 0) {
 			submit_btn.show();
-			// Only show #related_btn if this is the main new post editor (not editing existing post)
+			// Only show #related_btn and #schedule_btn if this is the main new post editor (not editing existing post)
 			if (container.is("#text_area")) {
 				$("#related_btn").show();
+				$("#schedule_btn").show();
 			}
 			$(".note_publish").slideUp("fast"); // Ensure indicator is hidden
 			$("#editor_placeholder").hide(); // Hide placeholder when content exists
 		} else {
 			submit_btn.hide();
-			// Only hide #related_btn if this is the main new post editor
+			// Only hide #related_btn and #schedule_btn if this is the main new post editor
 			if (container.is("#text_area")) {
 				$("#related_btn").hide();
+				$("#schedule_btn").hide();
 			}
 			$("#editor_placeholder").show(); // Show placeholder when empty
 		}
@@ -733,18 +737,23 @@ function makeid(amount) {
 // Helper function to format the current date and time
 function getFormattedDate() {
 	var now = new Date();
+	return formatScheduledDate(now);
+}
+
+// Helper function to format a date for the frontmatter
+function formatScheduledDate(date) {
 	return (
-		now.getFullYear() +
+		date.getFullYear() +
 		"-" +
-		String(now.getMonth() + 1).padStart(2, "0") +
+		String(date.getMonth() + 1).padStart(2, "0") +
 		"-" +
-		String(now.getDate()).padStart(2, "0") +
+		String(date.getDate()).padStart(2, "0") +
 		" " +
-		String(now.getHours()).padStart(2, "0") +
+		String(date.getHours()).padStart(2, "0") +
 		":" +
-		String(now.getMinutes()).padStart(2, "0") +
+		String(date.getMinutes()).padStart(2, "0") +
 		":" +
-		String(now.getSeconds()).padStart(2, "0")
+		String(date.getSeconds()).padStart(2, "0")
 	);
 }
 
@@ -904,6 +913,7 @@ function showDraftRestorePrompt(draft, editor) {
 			editor.setContent(draft.content);
 			$('#draft-restore-prompt').slideUp(function() { $(this).remove(); });
 			$('#submit_btn').show();
+			$('#schedule_btn').show();
 		}
 	});
 	
@@ -941,6 +951,98 @@ function newpost() {
 	// Start autosave
 	startAutosave(editor);
 
+	// Schedule picker state - null means "now", otherwise a Date object
+	var scheduledDate = null;
+
+	// Initialize schedule picker UI
+	initSchedulePicker();
+
+	function initSchedulePicker() {
+		var $btn = $("#schedule_btn");
+		var $dropdown = $("#schedule_dropdown");
+		var $label = $("#schedule_label");
+		var $datetimeInput = $("#schedule_datetime");
+
+		// Toggle dropdown
+		$btn.click(function(e) {
+			e.stopPropagation();
+			$dropdown.toggleClass("schedule-dropdown-hidden");
+			
+			// Set datetime input to current scheduled date or now + 1 day
+			if (scheduledDate) {
+				$datetimeInput.val(formatDatetimeLocal(scheduledDate));
+			} else {
+				var tomorrow = new Date();
+				tomorrow.setDate(tomorrow.getDate() + 1);
+				tomorrow.setHours(10, 0, 0, 0); // Default to 10am
+				$datetimeInput.val(formatDatetimeLocal(tomorrow));
+			}
+		});
+
+		// Close dropdown when clicking outside
+		$(document).click(function(e) {
+			if (!$(e.target).closest("#schedule_picker").length) {
+				$dropdown.addClass("schedule-dropdown-hidden");
+			}
+		});
+
+		// Preset buttons
+		$(".schedule-preset").click(function() {
+			var offset = parseInt($(this).data("offset"));
+			if (offset === 0) {
+				scheduledDate = null;
+				updateScheduleLabel();
+			} else {
+				var date = new Date();
+				date.setDate(date.getDate() + offset);
+				date.setHours(10, 0, 0, 0); // Default to 10am
+				scheduledDate = date;
+				$datetimeInput.val(formatDatetimeLocal(date));
+				updateScheduleLabel();
+			}
+			$dropdown.addClass("schedule-dropdown-hidden");
+		});
+
+		// Apply custom datetime
+		$("#schedule_apply").click(function() {
+			var val = $datetimeInput.val();
+			if (val) {
+				scheduledDate = new Date(val);
+				updateScheduleLabel();
+			}
+			$dropdown.addClass("schedule-dropdown-hidden");
+		});
+
+		// Clear button
+		$("#schedule_clear").click(function() {
+			scheduledDate = null;
+			updateScheduleLabel();
+			$dropdown.addClass("schedule-dropdown-hidden");
+		});
+
+		function updateScheduleLabel() {
+			if (!scheduledDate) {
+				$label.text("Now");
+				$btn.removeClass("scheduled");
+			} else {
+				// Format as "Jan 5, 10:00"
+				var options = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+				$label.text(scheduledDate.toLocaleDateString('en-US', options));
+				$btn.addClass("scheduled");
+			}
+		}
+
+		function formatDatetimeLocal(date) {
+			// Format for datetime-local input: YYYY-MM-DDTHH:MM
+			var year = date.getFullYear();
+			var month = String(date.getMonth() + 1).padStart(2, '0');
+			var day = String(date.getDate()).padStart(2, '0');
+			var hours = String(date.getHours()).padStart(2, '0');
+			var minutes = String(date.getMinutes()).padStart(2, '0');
+			return year + '-' + month + '-' + day + 'T' + hours + ':' + minutes;
+		}
+	}
+
 	// new post
 	$("#submit_btn").click(function (event) {
 		// get editor content
@@ -961,7 +1063,9 @@ function newpost() {
 		var hashtags = getHashtag(elContent)[0];
 		elContent = linkify(elContent);
 		elContent = elContent.replaceAll(' class="hashtag"', "");
-		var post_date = getFormattedDate();
+		
+		// Use scheduled date if set, otherwise use current date
+		var post_date = scheduledDate ? formatScheduledDate(scheduledDate) : getFormattedDate();
 
 		var status = "public";
 		var author = $("#site").attr("author");

@@ -23,6 +23,7 @@ That's why I built Flow - a minimalist intelligent blogging engine that gets out
 - 🔍 **Full-Text Search**: Search across all posts, works on both editor and published site
 - 📊 **Content Explorer**: Visual timeline view of your content
 - 🔗 **Related Posts**: Discover and link to related content while writing
+- 📅 **Post Scheduling**: Queue posts for future dates to maintain consistent publishing
 - 📧 **Newsletter Integration**: Optional subscribe button with Mailchimp support
 - 📡 **FTP & rsync**: One-click deployments via FTP or lightning-fast rsync over SSH
 - 📰 **RSS with Images**: Full RSS feed support including image enclosures
