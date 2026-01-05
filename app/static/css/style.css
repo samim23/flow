@@ -532,7 +532,7 @@ mark{
   color:black;
   text-decoration:none!important;
   background-color:rgba(0, 0, 0, 0.01);
-  border: 2px solid #c2c2c2;
+  border: 1px solid #c2c2c2;
   display: flex;
 }
 .tag_container:hover{
@@ -1434,10 +1434,13 @@ mark{
   margin: 0;
   padding: 6px 10px 4px 10px;
   border-radius: 20px;
+  border: 1px solid #c2c2c2;
+  color: #000000;
 }
 .button_active {
-  background-color: #65C7B2;
+  background-color: rgba(13, 204, 108, 1);
   color:white;
+  border-color: rgba(13, 204, 108, 1);
 }
 
 .post_dropdown{
