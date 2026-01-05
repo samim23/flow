@@ -304,7 +304,7 @@ function applyCollapseIfNeeded(element) {
 	// Also count flow-embeds as "heavy" content that warrants collapse
 	const hasHeavyContent = flowEmbeds.length > 3;
 	
-	if (element.offsetHeight > 640 || images.length > 10 || hasHeavyContent) {
+	if (element.offsetHeight > 740 || images.length > 10 || hasHeavyContent) {
 		element.classList.add("content_shortend");
 		const initialHeight = element.offsetHeight + "px";
 		
