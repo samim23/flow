@@ -97,23 +97,13 @@ async function initTagSpotlights() {
     container.innerHTML = '<div class="spotlight-loading">Loading featured tags...</div>';
     
     try {
-        // Fetch posts.json to get tag counts
-        const response = await fetch('/posts.json');
-        if (!response.ok) throw new Error('Could not load posts');
-        const posts = await response.json();
-        
-        // Group by tag and count
-        const tagCounts = new Map();
-        posts.forEach(post => {
-            if (post.tags) {
-                post.tags.forEach(tag => {
-                    tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
-                });
-            }
-        });
+        // Fetch lightweight tag-counts.json (~1.7KB instead of 3.7MB posts.json)
+        const response = await fetch('/tag-counts.json');
+        if (!response.ok) throw new Error('Could not load tag counts');
+        const tagCounts = await response.json();
         
         // Sort by count, take top 20
-        const topTags = [...tagCounts.entries()]
+        const topTags = Object.entries(tagCounts)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 20)
             .map(([tag]) => tag);

@@ -882,42 +882,32 @@ class StaticSiteGenerator:
             raise
 
     async def generate_posts_json(self):
-        """Generate posts.json index for client-side features (random post, new post count)"""
+        """Generate lightweight JSON files for client-side features"""
         try:
             public_pages = list(self.content_manager.get_pages_by_status("public"))
             
-            # Sort by date descending (newest first)
-            public_pages.sort(
-                key=lambda p: p.metadata.date or datetime(1970, 1, 1),
-                reverse=True
-            )
+            # 1. Generate posts-urls.json - just URLs for random post (~865KB vs 3.7MB)
+            post_urls = [f"/p/{page.path}/" for page in public_pages]
+            urls_file = self.output_dir / "posts-urls.json"
+            with open(urls_file, 'w', encoding='utf-8') as f:
+                json.dump(post_urls, f, separators=(',', ':'))
+            logger.debug(f"Generated posts-urls.json with {len(post_urls)} URLs")
             
-            # Build compact JSON with essential info
-            posts_data = []
+            # 2. Generate tag-counts.json - tag counts for tags page (~1.7KB)
+            from collections import Counter
+            tag_counts = Counter()
             for page in public_pages:
-                post_entry = {
-                    "url": f"/p/{page.path}/",
-                    "path": page.path,
-                    "title": page.metadata.title or page.path,
-                }
-                if page.metadata.date:
-                    post_entry["date"] = page.metadata.date.isoformat()
-                # Include tags for client-side filtering (tag pages, random by tag, etc.)
                 if page.metadata.tags:
-                    post_entry["tags"] = page.metadata.tags
-                posts_data.append(post_entry)
+                    for tag in page.metadata.tags:
+                        tag_counts[tag] += 1
             
-            # Write to output directory
-            output_file = self.output_dir / "posts.json"
-            output_file.parent.mkdir(parents=True, exist_ok=True)
-            
-            with open(output_file, 'w', encoding='utf-8') as f:
-                json.dump(posts_data, f, separators=(',', ':'))  # Compact JSON
-            
-            logger.debug(f"Generated posts.json with {len(posts_data)} posts")
+            tags_file = self.output_dir / "tag-counts.json"
+            with open(tags_file, 'w', encoding='utf-8') as f:
+                json.dump(dict(tag_counts), f, separators=(',', ':'))
+            logger.debug(f"Generated tag-counts.json with {len(tag_counts)} tags")
             
         except Exception as e:
-            logger.error(f"Error generating posts.json: {e}")
+            logger.error(f"Error generating posts JSON files: {e}")
             raise
 
     async def generate_explore(self):
@@ -1128,7 +1118,8 @@ class StaticSiteGenerator:
             self.metrics.add_generated_file("core_pages", "index.html")
             self.metrics.add_generated_file("core_pages", "rss.xml")
             self.metrics.add_generated_file("core_pages", "sitemap.xml")
-            self.metrics.add_generated_file("core_pages", "posts.json")
+            self.metrics.add_generated_file("core_pages", "posts-urls.json")
+            self.metrics.add_generated_file("core_pages", "tag-counts.json")
             self.metrics.add_generated_file("core_pages", "tag/index.html")
             self.metrics.add_generated_file("core_pages", "explore/index.html")
             

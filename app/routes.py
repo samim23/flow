@@ -601,7 +601,7 @@ async def sitemap(request: Request):
 
 @router.get("/posts.json", response_class=JSONResponse)
 async def posts_json(request: Request):
-    """Generate posts index JSON for client-side features (random post, new post count)"""
+    """Legacy endpoint - kept for backwards compatibility"""
     content_manager = request.app.state.content_manager
     pages = list(content_manager.get_pages_by_status("public"))
     
@@ -627,6 +627,35 @@ async def posts_json(request: Request):
         posts_data.append(post_entry)
     
     return JSONResponse(content=posts_data)
+
+
+@router.get("/posts-urls.json", response_class=JSONResponse)
+async def posts_urls_json(request: Request):
+    """Lightweight endpoint - just URLs for random post feature (~865KB vs 3.7MB)"""
+    content_manager = request.app.state.content_manager
+    pages = list(content_manager.get_pages_by_status("public"))
+    
+    # Just return URLs
+    urls = [f"/p/{page.path}/" for page in pages]
+    return JSONResponse(content=urls)
+
+
+@router.get("/tag-counts.json", response_class=JSONResponse)
+async def tag_counts_json(request: Request):
+    """Lightweight endpoint - tag counts for tags page (~1.7KB)"""
+    from collections import Counter
+    
+    content_manager = request.app.state.content_manager
+    pages = list(content_manager.get_pages_by_status("public"))
+    
+    # Count tags
+    tag_counts = Counter()
+    for page in pages:
+        if page.metadata.tags:
+            for tag in page.metadata.tags:
+                tag_counts[tag] += 1
+    
+    return JSONResponse(content=dict(tag_counts))
 
 
 # Site publishing

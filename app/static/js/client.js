@@ -1391,7 +1391,7 @@ function limitPopularPosts(sidebar) {
 	setTimeout(() => observer.disconnect(), 5000);
 }
 
-// Welcome message using localStorage
+// Welcome message - simple version (no posts.json fetch)
 function initWelcomeMessage() {
 	const welcomeEl = document.getElementById('sidebar-welcome');
 	if (!welcomeEl) return;
@@ -1406,90 +1406,29 @@ function initWelcomeMessage() {
 		return;
 	}
 	
-	// Return visitor
-	const lastVisit = new Date(lastVisitStr);
+	// Return visitor - just show welcome, no post count
+	const welcomeText = welcomeEl.querySelector('.welcome-text');
+	const newPostsEl = welcomeEl.querySelector('.welcome-new-posts');
 	
-	// Count new posts since last visit
-	countNewPostsSince(lastVisit).then(newCount => {
-		const welcomeText = welcomeEl.querySelector('.welcome-text');
-		const newPostsEl = welcomeEl.querySelector('.welcome-new-posts');
-		
-		if (welcomeText) {
-			welcomeText.textContent = 'Welcome back!';
-		}
-		
-		if (newPostsEl && newCount > 0) {
-			const postWord = newCount === 1 ? 'post' : 'posts';
-			const dateStr = formatLastVisitDate(lastVisit);
-			if (newCount >= 50) {
-				newPostsEl.textContent = `50+ new ${postWord} since ${dateStr}`;
-			} else {
-				newPostsEl.textContent = `${newCount} new ${postWord} since ${dateStr}`;
-			}
-		} else if (newPostsEl) {
-			newPostsEl.style.display = 'none';
-		}
-		
-		// Show the welcome section
-		welcomeEl.style.display = 'block';
-		
-		// Update last visit timestamp
-		localStorage.setItem(STORAGE_KEY, now.toISOString());
-	});
-}
-
-function formatLastVisitDate(date) {
-	const now = new Date();
-	const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-	
-	if (diffDays === 0) return 'earlier today';
-	if (diffDays === 1) return 'yesterday';
-	if (diffDays < 7) return `${diffDays} days ago`;
-	if (diffDays < 30) {
-		const weeks = Math.floor(diffDays / 7);
-		return weeks === 1 ? 'last week' : `${weeks} weeks ago`;
+	if (welcomeText) {
+		welcomeText.textContent = 'Welcome back!';
 	}
 	
-	// For longer periods, show the date
-	return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-async function countNewPostsSince(lastVisit) {
-	// Get site path prefix
-	const siteElement = document.getElementById('site');
-	let pathPrefix = '';
-	if (siteElement && siteElement.dataset.sitePathPrefix) {
-		pathPrefix = siteElement.dataset.sitePathPrefix.replace(/\/$/, '');
+	// Hide the new posts element (feature removed for performance)
+	if (newPostsEl) {
+		newPostsEl.style.display = 'none';
 	}
 	
-	try {
-		// Fetch posts.json which contains all post dates
-		const response = await fetch(`${pathPrefix}/posts.json`);
-		if (!response.ok) return 0;
-		
-		const posts = await response.json();
-		const lastVisitTime = lastVisit.getTime();
-		
-		// Count posts published after last visit
-		let count = 0;
-		for (const post of posts) {
-			if (post.date) {
-				const postDate = new Date(post.date);
-				if (postDate.getTime() > lastVisitTime) {
-					count++;
-					if (count >= 50) break; // Cap at 50
-				}
-			}
-		}
-		
-		return count;
-	} catch (e) {
-		console.warn('Could not count new posts:', e);
-		return 0;
-	}
+	// Show the welcome section
+	welcomeEl.style.display = 'block';
+	
+	// Update last visit timestamp
+	localStorage.setItem(STORAGE_KEY, now.toISOString());
 }
 
-// Random post button
+// Random post button - uses lightweight posts-urls.json with caching
+let cachedPostUrls = null;
+
 function initRandomPost() {
 	const randomBtns = document.querySelectorAll('#random-post-nav, #random-post-btn');
 	if (randomBtns.length === 0) return;
@@ -1511,20 +1450,23 @@ async function navigateToRandomPost() {
 	}
 	
 	try {
-		const response = await fetch(`${pathPrefix}/posts.json`);
-		if (!response.ok) {
-			console.error('Could not load posts index');
-			return;
+		// Use cached URLs if available (instant on repeat clicks)
+		if (!cachedPostUrls) {
+			const response = await fetch(`${pathPrefix}/posts-urls.json`);
+			if (!response.ok) {
+				console.error('Could not load posts index');
+				return;
+			}
+			cachedPostUrls = await response.json();
 		}
 		
-		const posts = await response.json();
-		if (posts.length === 0) return;
+		if (cachedPostUrls.length === 0) return;
 		
-		// Pick a random post
-		const randomPost = posts[Math.floor(Math.random() * posts.length)];
+		// Pick a random URL
+		const randomUrl = cachedPostUrls[Math.floor(Math.random() * cachedPostUrls.length)];
 		
 		// Navigate to it
-		window.location.href = randomPost.url;
+		window.location.href = randomUrl;
 	} catch (e) {
 		console.error('Random post navigation failed:', e);
 	}
