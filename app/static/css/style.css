@@ -1477,6 +1477,7 @@ mark{
   max-width: 60%;
   height: auto;
   display: block;
+  cursor: zoom-in;
   margin-top: 15px;
   margin-bottom: 15px;
 }
@@ -2718,7 +2719,8 @@ hr {
 .medium-insert-images figure img,.mediumInsert figure img{
   max-width:100%;
   margin-top:1em;
-  vertical-align:top
+  vertical-align:top;
+  cursor: zoom-in;
 }
 .medium-insert-images figure:first-child img,.mediumInsert figure:first-child img{
   margin-top:0
