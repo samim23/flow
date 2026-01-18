@@ -201,7 +201,8 @@ blockquote p {
 }
 
 .text-serif p,
-.text-serif li {
+.text-serif li,
+.text-serif blockquote {
   font-family: "FeatureFlatHeadline", "Georgia", "Times New Roman", "Times", serif;
   font-size: 1.18rem;
   line-height: 1.75; 
@@ -306,6 +307,18 @@ pre {
   -webkit-backdrop-filter: blur(12px);
   padding-right: 10px;
   padding-left: 10px;
+  /* GPU compositing hints for smoother animations */
+  will-change: transform;
+  contain: layout style;
+}
+
+/* Respect user's reduced motion preference for better accessibility and performance */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Enable transitions only when in smart sticky mode */
@@ -373,6 +386,13 @@ pre {
 @media (max-width: 800px) {
   #site_logo{
       font-size: 28px;
+  }
+  
+  /* Remove expensive backdrop-filter on mobile for better INP/performance */
+  #top-container {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background-color: rgba(255, 255, 255, 0.97);
   }
 }
 
@@ -527,6 +547,7 @@ mark{
   white-space: nowrap;
   line-height:10px;
   padding:8px 8px;
+  padding-bottom: 7px;
   border-radius:5px;
   font-size:14px;
   color:black;
@@ -856,11 +877,20 @@ mark{
   color:rgb(184, 184, 184);
   font-size: 14px;
   margin-bottom: 10px;
-  -webkit-animation: fadein 2s;
-       -moz-animation: fadein 2s;
-        -ms-animation: fadein 2s;
-         -o-animation: fadein 2s;
-            animation: fadein 2s;
+  /* Reduced animation duration for better perceived performance */
+  -webkit-animation: fadein 0.4s;
+       -moz-animation: fadein 0.4s;
+        -ms-animation: fadein 0.4s;
+         -o-animation: fadein 0.4s;
+            animation: fadein 0.4s;
+}
+
+/* Disable animations on mobile for better INP - users prefer responsiveness */
+@media (max-width: 800px) {
+  .post_meta {
+    animation: none;
+    -webkit-animation: none;
+  }
 }
 .post_meta a{
   text-decoration: underline;

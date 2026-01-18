@@ -616,7 +616,7 @@ function infiniteScroll() {
 	const threshold = mobile ? 1500 : 1000; // Trigger earlier on mobile to feel smoother
 	const debounceMs = mobile ? 250 : 150;  // Longer debounce on mobile to reduce load
 
-	// Add scroll handler with debounce
+	// Add scroll handler with debounce - passive: true for better INP
 	let scrollTimeout;
 	window.addEventListener("scroll", () => {
 		clearTimeout(scrollTimeout);
@@ -628,7 +628,7 @@ function infiniteScroll() {
 				loadPage();
 			}
 		}, debounceMs);
-	});
+	}, { passive: true });
 }
 
 // Add necessary styles for the image gallery
@@ -675,9 +675,20 @@ document.head.appendChild(galleryStyles);
 
 // Lazy load MathJax only when math content is detected
 function lazyLoadMathJax() {
-	// Check if page contains LaTeX math notation
-	const content = document.body.innerHTML;
-	const hasMath = /\\\(.*?\\\)|\\\[.*?\\\]|\$\$.*?\$\$|\$[^$]+\$/s.test(content);
+	// Check if page contains LaTeX math notation - use lightweight selector check first
+	// Only check text content if we find potential math containers
+	const potentialMathContainers = document.querySelectorAll('.e-content, .content_main, article');
+	if (potentialMathContainers.length === 0) return;
+	
+	// Check only the text content (much lighter than innerHTML regex)
+	let hasMath = false;
+	for (const container of potentialMathContainers) {
+		const text = container.textContent;
+		if (text.includes('\\(') || text.includes('\\[') || text.includes('$$') || /\$[^$]+\$/.test(text)) {
+			hasMath = true;
+			break;
+		}
+	}
 	
 	if (hasMath && !window.MathJax) {
 		console.log('Math content detected, loading MathJax...');
@@ -836,9 +847,26 @@ loadAnalyticsScript();
 
 // ============================================
 // Flow Embed - Render <flow-embed> as quote cards
+// Uses IntersectionObserver for lazy loading (better INP)
 // ============================================
+let flowEmbedObserver = null;
+
 function initFlowEmbeds() {
 	const embeds = document.querySelectorAll('flow-embed:not([data-initialized])');
+	if (embeds.length === 0) return;
+	
+	// Use IntersectionObserver for lazy loading - only fetch when visible
+	if (!flowEmbedObserver && 'IntersectionObserver' in window) {
+		flowEmbedObserver = new IntersectionObserver((entries) => {
+			entries.forEach(entry => {
+				if (entry.isIntersecting) {
+					const embed = entry.target;
+					flowEmbedObserver.unobserve(embed);
+					loadFlowEmbed(embed);
+				}
+			});
+		}, { rootMargin: '200px' }); // Start loading 200px before visible
+	}
 	
 	embeds.forEach(embed => {
 		embed.setAttribute('data-initialized', 'true');
@@ -852,9 +880,19 @@ function initFlowEmbeds() {
 		// Show loading state
 		embed.innerHTML = '<div class="flow-embed-loading">Loading...</div>';
 		
-		// Fetch the page and extract content
-		fetchAndRenderEmbed(embed, url);
+		// Use IntersectionObserver if available, otherwise load immediately
+		if (flowEmbedObserver) {
+			flowEmbedObserver.observe(embed);
+		} else {
+			loadFlowEmbed(embed);
+		}
 	});
+}
+
+function loadFlowEmbed(embed) {
+	const url = embed.getAttribute('url');
+	if (!url) return;
+	fetchAndRenderEmbed(embed, url);
 }
 
 async function fetchAndRenderEmbed(embed, url) {
@@ -956,7 +994,15 @@ function escapeHtml(text) {
 }
 
 // Run on page load and after dynamic content loads
-document.addEventListener('DOMContentLoaded', initFlowEmbeds);
+// Deferred to avoid blocking INP
+document.addEventListener('DOMContentLoaded', () => {
+	// Defer flow-embed init to not block user interactions
+	if ('requestIdleCallback' in window) {
+		requestIdleCallback(() => initFlowEmbeds(), { timeout: 1000 });
+	} else {
+		setTimeout(initFlowEmbeds, 50);
+	}
+});
 
 // Also expose globally so it can be called after content changes
 window.initFlowEmbeds = initFlowEmbeds;
@@ -1214,8 +1260,36 @@ function renderDiscovery(container, tags, tagPosts, topStories) {
 	container.innerHTML = html;
 }
 
-// Initialize on DOMContentLoaded
-document.addEventListener('DOMContentLoaded', initContentDiscovery);
+// Initialize content discovery after main content is interactive
+// Using requestIdleCallback to avoid blocking INP (Interaction to Next Paint)
+document.addEventListener('DOMContentLoaded', () => {
+	// Defer heavy content discovery to not block user interactions
+	const deferredInit = () => {
+		// Use IntersectionObserver to only load when section is near viewport
+		const discoveryContainer = document.getElementById('content-discovery');
+		if (!discoveryContainer) return;
+		
+		if ('IntersectionObserver' in window) {
+			const observer = new IntersectionObserver((entries) => {
+				if (entries[0].isIntersecting) {
+					observer.disconnect();
+					initContentDiscovery();
+				}
+			}, { rootMargin: '400px' }); // Start loading 400px before visible
+			observer.observe(discoveryContainer);
+		} else {
+			// Fallback: load after a delay
+			setTimeout(initContentDiscovery, 2000);
+		}
+	};
+	
+	// Use requestIdleCallback if available, otherwise setTimeout
+	if ('requestIdleCallback' in window) {
+		requestIdleCallback(deferredInit, { timeout: 3000 });
+	} else {
+		setTimeout(deferredInit, 100);
+	}
+});
 
 // ============================================
 // Sidebar: Welcome Message + Random Post + Popular
