@@ -774,14 +774,24 @@ async def upload(request: Request, file: UploadFile = File(...)):
 
         # Upload to FTP if enabled
         if settings.server_ftp_enabled:
-            with ftplib.FTP(settings.server_ftp_server, 
-                           settings.server_ftp_username,
-                           settings.server_ftp_password) as session:
+            try:
+                import ssl
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+                session = ftplib.FTP_TLS(context=ctx)
+                session.connect(settings.server_ftp_server, 21, timeout=30)
+                session.auth()
+                session.login(settings.server_ftp_username, settings.server_ftp_password)
+                session.prot_p()
                 ftp_path = settings.server_ftp_media_path + filename
                 with open(file_path, 'rb') as f:
                     session.storbinary(f'STOR {ftp_path}', f)
                 file_url = settings.server_ftp_media_site_path + filename
+                session.quit()
                 logger.info(f"Uploaded to FTP: {file_url}")
+            except Exception as ftp_err:
+                logger.error(f"FTP upload failed (returning local URL as fallback): {ftp_err}")
 
         return {
             "files": [{

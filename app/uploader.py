@@ -1,6 +1,7 @@
 # app/uploader.py
 
-from ftplib import FTP
+import ftplib
+import ssl
 from pathlib import Path
 import hashlib
 from typing import List, Tuple
@@ -105,6 +106,11 @@ class FTPUploader:
         """No-op: SQLite cache auto-saves on each operation"""
         pass
 
+    def _get_file_fingerprint(self, path: Path) -> str:
+        """Fast fingerprint using mtime + size; falls back to MD5 only when those change."""
+        stat = path.stat()
+        return f"{stat.st_mtime_ns}:{stat.st_size}"
+
     def _get_file_hash(self, path: Path) -> str:
         """Calculate MD5 hash of file"""
         hash_md5 = hashlib.md5()
@@ -121,12 +127,22 @@ class FTPUploader:
         for path in local_dir.rglob("*"):
             if path.is_file():
                 try:
-                    file_hash = self._get_file_hash(path)
                     cache_key = str(path)
-                    if cache_key not in self.cache or self.cache.get(cache_key) != file_hash:
+                    fingerprint = self._get_file_fingerprint(path)
+                    cached = self.cache.get(cache_key)
+                    # Fast path: mtime+size unchanged → file hasn't changed
+                    if cached and cached.startswith(fingerprint + ":"):
+                        continue
+                    file_hash = self._get_file_hash(path)
+                    new_value = f"{fingerprint}:{file_hash}"
+                    # Migration: old cache stored bare MD5 — treat matching hash as unchanged
+                    if cached == file_hash:
+                        self.cache.set(cache_key, new_value)
+                        continue
+                    if cached != new_value:
                         changed_files.append(path)
-                        self.cache.set(cache_key, file_hash)
                         logger.debug(f"Found changed file: {path}")
+                    self.cache.set(cache_key, new_value)
                 except Exception as e:
                     logger.error(f"Error hashing file {path}: {e}")
             elif path.is_dir():
@@ -162,16 +178,29 @@ class FTPUploader:
         CHUNK_SIZE = 8192  # 8KB chunks
 
         def connect_ftp():
-            """Create new FTP connection"""
-            ftp = FTP(
-                self.settings.server_ftp_server,
-                self.settings.server_ftp_username,
-                self.settings.server_ftp_password,
-                timeout=TIMEOUT
-            )
-            # Disable debug output
+            """Create new FTPS connection (TLS, shared-hosting cert ignored)"""
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            ftp = ftplib.FTP_TLS(context=ctx)
+            ftp.connect(self.settings.server_ftp_server, 21, timeout=TIMEOUT)
+            ftp.auth()
+            ftp.login(self.settings.server_ftp_username, self.settings.server_ftp_password)
+            ftp.prot_p()
             ftp.set_debuglevel(0)
             return ftp
+
+        def ensure_remote_dir(ftp, remote_dir: str):
+            """Recursively ensure all components of remote_dir exist."""
+            parts = [p for p in remote_dir.replace("\\", "/").split("/") if p]
+            current = ""
+            for part in parts:
+                current = current + "/" + part
+                try:
+                    ftp.mkd(current)
+                except ftplib.error_perm as e:
+                    if "exist" not in str(e).lower():
+                        raise
 
         try:
             ftp = connect_ftp()
@@ -208,6 +237,7 @@ class FTPUploader:
                 
                 for attempt in range(MAX_RETRIES):
                     try:
+                        ensure_remote_dir(ftp, str(remote_path.parent))
                         with open(file_path, "rb") as f:
                             # Try to delete existing file quietly
                             try:
