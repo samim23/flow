@@ -961,6 +961,12 @@ mark{
   align-items: center;
   margin-top: 6px;
 }
+.editor_secondary_actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
 #submit_btn{
   display: none;
   background-color: #2fbc5c;
@@ -984,7 +990,6 @@ mark{
 }
 #related_btn {
   display: none;
-  margin-left: auto;
   background-color: transparent;
   color: #666;
   border: 1px solid #ddd;
@@ -1004,6 +1009,17 @@ mark{
   vertical-align: middle;
   margin-right: 4px;
   margin-top: -2px;
+}
+
+.composer-render-select {
+  display: none;
+  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #444;
+  cursor: pointer;
 }
 
 /* Schedule Picker */
@@ -1368,6 +1384,15 @@ mark{
 }
 .btn_related svg {
   vertical-align: middle;
+}
+.btn_edit_render_mode {
+  position: absolute;
+  right: 332px;
+  margin-top: -35px;
+  min-width: 130px;
+  font-size: 12px;
+  padding: 6px 8px;
+  font-weight: 600;
 }
 .post_status{
   float: right;

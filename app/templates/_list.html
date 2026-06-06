@@ -1,7 +1,7 @@
     <ul id="posts">
     {%- for page in pages -%}
       {%- if page -%}
-      <li class="h-entry">
+      <li class="h-entry" data-render-as-markdown="{% if page.meta.render_as_markdown %}true{% else %}false{% endif %}">
         <div class="post_meta">
           {%- set authorname = page.meta.author|default('', true) -%}
           {%- if page.meta.author_name -%}

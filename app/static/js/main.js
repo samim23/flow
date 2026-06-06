@@ -489,6 +489,7 @@ function editor_create(container, submit_btn) {
 			if (container.is("#text_area")) {
 				$("#related_btn").show();
 				$("#schedule_btn").show();
+				$("#composer_render_as_markdown").show();
 			}
 			$(".note_publish").slideUp("fast"); // Ensure indicator is hidden
 			$("#editor_placeholder").hide(); // Hide placeholder when content exists
@@ -498,6 +499,7 @@ function editor_create(container, submit_btn) {
 			if (container.is("#text_area")) {
 				$("#related_btn").hide();
 				$("#schedule_btn").hide();
+				$("#composer_render_as_markdown").hide();
 			}
 			$("#editor_placeholder").show(); // Show placeholder when empty
 		}
@@ -517,8 +519,10 @@ function makePostString(
 	author_name,
 	link,
 	icon,
-	elContent
+	elContent,
+	renderAsMarkdown
 ) {
+	renderAsMarkdown = !!renderAsMarkdown;
 	// Check if post is image-only (for better fallback title)
 	const hasImage = /<img|<figure/.test(elContent);
 	const textContent = elContent.replace(/<[^>]*>?/gm, "").trim();
@@ -572,7 +576,8 @@ function makePostString(
 	// Ensure post_date is valid
 	post_date = post_date || new Date().toISOString(); // Fallback to current date
 
-	// Generate YAML frontmatter
+	const renderYaml = renderAsMarkdown ? "render_as_markdown: true\n" : "";
+	// Generate YAML frontmatter (omit render_as_markdown when false — default is HTML)
 	const frontmatter = `---
 title: "${title}"
 date: ${post_date}
@@ -582,7 +587,7 @@ author: ${author || ""}
 author_name: "${author_name || ""}"
 link: "${link || ""}"
 icon: "${icon || ""}"
----
+${renderYaml}---
 `;
 
 	// Combine frontmatter with content
@@ -677,6 +682,18 @@ editpost = function () {
 		});
 		btn_container.append(btn_cancel);
 
+		var sel_render = $("<select/>", {
+			id: "edit_render_as_markdown",
+			class: "content_btn btn_edit_render_mode",
+			title: 'Save as frontmatter: omit "render_as_markdown" for HTML, true for Markdown',
+		});
+		sel_render.append($("<option/>", { value: "0", text: "HTML (default)" }));
+		sel_render.append($("<option/>", { value: "1", text: "Markdown" }));
+		sel_render.val(
+			post_container.attr("data-render-as-markdown") === "true" ? "1" : "0"
+		);
+		btn_container.append(sel_render);
+
 		// button related (for finding related posts while editing)
 		var btn_related = $("<button/>", {
 			id: "edit_related_btn",
@@ -702,6 +719,8 @@ editpost = function () {
 					alert("Please wait for image uploads to complete before saving.");
 					return;
 				}
+
+				var renderAsMarkdown = sel_render.val() === "1";
 
 				editing = false;
 				post_edit.removeClass(".editable");
@@ -733,7 +752,8 @@ editpost = function () {
 					author_name,
 					link,
 					icon,
-					elContent
+					elContent,
+					renderAsMarkdown
 				);
 				var text = poststring[0];
 				var title = poststring[1];
@@ -744,6 +764,10 @@ editpost = function () {
 					data: { text: text, path: post_edit_id, unique: false },
 					type: "POST",
 					success: function (response) {
+						post_container.attr(
+							"data-render-as-markdown",
+							renderAsMarkdown ? "true" : "false"
+						);
 						post_container
 							.find(".p-author")
 							.attr("href", "/feed/" + author + "/");
@@ -951,6 +975,8 @@ function showDraftRestorePrompt(draft, editor) {
 			$('#draft-restore-prompt').slideUp(function() { $(this).remove(); });
 			$('#submit_btn').show();
 			$('#schedule_btn').show();
+			$('#related_btn').show();
+			$('#composer_render_as_markdown').show();
 		}
 	});
 	
@@ -1110,6 +1136,9 @@ function newpost() {
 		var author_name = $("#site").attr("author_name");
 		var link = "/";
 
+		var renderAsMarkdown =
+			$("#composer_render_as_markdown").val() === "1";
+
 		var poststring = makePostString(
 			post_date,
 			hashtags,
@@ -1118,7 +1147,8 @@ function newpost() {
 			author_name,
 			link,
 			icon,
-			elContent
+			elContent,
+			renderAsMarkdown
 		);
 		var text = poststring[0];
 		var title = poststring[1];

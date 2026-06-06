@@ -1,6 +1,6 @@
 {% extends "base.html" -%} {% block content %}
 {% if page %}
-<div class="post h-entry">
+<div class="post h-entry" data-render-as-markdown="{% if page.meta.render_as_markdown %}true{% else %}false{% endif %}">
 	<div class="post_meta">
 		{%- set authorname = page.meta.author|default('', true) -%}
 		{%- if page.meta.author_name -%}

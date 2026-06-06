@@ -44,9 +44,15 @@ def clear_cache(tags, archives, tag_archives, posts, all):
     click.echo(f"Cleared {cleared} cache entries")
 
 @cli.command()
-def serve():
+@click.option('--reload', is_flag=True, help='Auto-restart on code changes (watches app/ only)')
+def serve(reload):
     """Run the development server"""
-    uvicorn.run("app.main:app", host="0.0.0.0", port=settings.local_server_port, reload=True)
+    kwargs = {}
+    if reload:
+        kwargs["reload"] = True
+        kwargs["reload_dirs"] = ["app"]
+        kwargs["reload_excludes"] = ["content/*", "build/*", "cache/*", "upload/*"]
+    uvicorn.run("app.main:app", host="0.0.0.0", port=settings.local_server_port, **kwargs)
 
 
 @cli.command()
