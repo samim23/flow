@@ -590,68 +590,55 @@ class StaticSiteGenerator:
             if not pages:
                 return 0
 
-            # Sort pages in reverse chronological order 
-            pages.sort(key=lambda p: p.metadata.date, reverse=True)
+            # Paginator numbers chunks oldest-first, so a new post only touches the last chunk
             paginator = Paginator(pages, self.settings.site_scroll_amount)
-            archive_dir = self.output_dir / "archive" / "tag"  # Changed from build_dir to output_dir
+            archive_dir = self.output_dir / "archive" / "tag"
+            total_num = paginator.total_pages - 1
+            chunks_key = f"tag_archives:{tag}:chunks"
+            prev_chunk_hashes = self.cache.get(chunks_key) or []
+            if not isinstance(prev_chunk_hashes, list):
+                prev_chunk_hashes = []
 
-            # Create content hash from pages data
-            content_hash = self._get_tag_content_hash(tag, pages)
-            cache_key = f"tag_archives:{tag}"
-            
-            # Get previous state
-            prev_hash = self.cache.get(cache_key)
-            prev_pages = self.cache.get(f"{cache_key}:pages") or []
+            chunk_hashes = []
+            archive_tasks = []
+            for page_num in range(paginator.total_pages):
+                chunk = paginator.get_page(page_num)
+                chunk_hash = hashlib.md5(json.dumps({
+                    "pages": [
+                        {
+                            "path": p.path,
+                            "metadata": p.metadata.dict(),
+                            "content": p.content,
+                            "html": p.html,
+                        }
+                        for p in chunk
+                    ],
+                    "has_next": page_num < total_num,
+                    "site_scroll_amount": self.settings.site_scroll_amount,
+                }, sort_keys=True, default=self._datetime_handler).encode()).hexdigest()
+                chunk_hashes.append(chunk_hash)
 
-            if prev_hash == content_hash:
-                return 0
+                output_path = archive_dir / f"{tag}_{page_num}.html"
+                if (page_num < len(prev_chunk_hashes)
+                        and prev_chunk_hashes[page_num] == chunk_hash
+                        and output_path.exists()):
+                    continue
 
-            # Find changed pages
-            changed_pages = []
-            current_pages_data = [(p.path, p.metadata.date.isoformat()) for p in pages]
-            
-            for i, (path, date) in enumerate(current_pages_data):
-                if i >= len(prev_pages) or path != prev_pages[i][0]:
-                    changed_pages.append(i)
+                context = self.get_template_context({
+                    "tag": tag,
+                    "pages": list(chunk),
+                    "current_number": page_num,
+                    "total_num": total_num,
+                    "isArchive": True,
+                    "pageTitle": f"{self.settings.site_name} - {tag} (Archive)"
+                })
+                archive_tasks.append(self.generate_page("tag.html", output_path, context))
+                self.metrics.add_generated_file("tag_archives", f"archive/tag/{tag}_{page_num}.html")
 
-            # Calculate which archive pages need regeneration
-            pages_to_regenerate = {i // self.settings.site_scroll_amount for i in changed_pages}
-            
-            if pages_to_regenerate:
-                # Generate only affected archive pages
-                archive_tasks = []
-                for page_num in sorted(pages_to_regenerate):
-                    if page_num >= paginator.total_pages:
-                        continue
-                        
-                    archive_path = f"archive/tag/{tag}_{page_num}.html"
-                    context = self.get_template_context({
-                        "tag": tag,
-                        "pages": list(paginator.get_page(page_num)),
-                        "current_number": page_num,
-                        "total_num": paginator.total_pages - 1,
-                        "isArchive": True,
-                        "pageTitle": f"{self.settings.site_name} - {tag} (Archive)"
-                    })
-                    
-                    archive_tasks.append(
-                        self.generate_page(
-                            "tag.html", 
-                            archive_dir / f"{tag}_{page_num}.html", 
-                            context
-                        )
-                    )
-                    self.metrics.add_generated_file("tag_archives", archive_path)
-
+            if archive_tasks:
                 await asyncio.gather(*archive_tasks)
-                
-                # Update cache with new state
-                self.cache.set(cache_key, content_hash)
-                self.cache.set(f"{cache_key}:pages", current_pages_data)
-                
-                return len(archive_tasks)
-
-            return 0
+            self.cache.set(chunks_key, chunk_hashes)
+            return len(archive_tasks)
 
         except Exception as e:
             logger.error(f"Error generating tag archives for {tag}: {e}")

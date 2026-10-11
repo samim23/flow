@@ -131,15 +131,13 @@ class FTPUploader:
                     fingerprint = self._get_file_fingerprint(path)
                     cached = self.cache.get(cache_key)
                     # Fast path: mtime+size unchanged → file hasn't changed
-                    if cached and cached.startswith(fingerprint + ":"):
+                    if isinstance(cached, str) and cached.startswith(fingerprint + ":"):
                         continue
                     file_hash = self._get_file_hash(path)
                     new_value = f"{fingerprint}:{file_hash}"
-                    # Migration: old cache stored bare MD5 — treat matching hash as unchanged
-                    if cached == file_hash:
-                        self.cache.set(cache_key, new_value)
-                        continue
-                    if cached != new_value:
+                    # Old cache entries stored a bare MD5, newer ones "mtime:size:md5"
+                    cached_hash = cached.rsplit(":", 1)[-1] if isinstance(cached, str) else None
+                    if cached_hash != file_hash:
                         changed_files.append(path)
                         logger.debug(f"Found changed file: {path}")
                     self.cache.set(cache_key, new_value)
@@ -293,8 +291,6 @@ class FTPUploader:
             # Just remove from cache so they'll be regenerated
             for tag in affected_tags:
                 self.cache.delete(f"tag:{tag}")
-                # Remove archive cache entries
-                self.cache.delete_prefix(f"tag_archives:{tag}")
 
         # Remove cache entries for general site files
         general_files = [
