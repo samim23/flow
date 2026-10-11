@@ -16,9 +16,13 @@ import json
 import os
 import hashlib
 import hmac
+import re
 
 from app.settings import settings
-from app.utils import clean_content, extract_first_image, get_image_mime_type, Paginator, convert_to_webp
+from app.utils import (
+    clean_content, extract_first_image, get_image_mime_type, Paginator, convert_to_webp,
+    build_tag_timeline, build_tag_timeline_posts,
+)
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -656,6 +660,22 @@ async def tag_counts_json(request: Request):
                 tag_counts[tag] += 1
     
     return JSONResponse(content=dict(tag_counts))
+
+
+@router.get("/tag-timeline.json", response_class=JSONResponse)
+async def tag_timeline_json(request: Request):
+    """Per-month tag counts for the topic drift charts on the tags page"""
+    pages = request.app.state.content_manager.get_pages_by_status("public")
+    return JSONResponse(content=build_tag_timeline(pages))
+
+
+@router.get("/tag-timeline/{month}.json", response_class=JSONResponse)
+async def tag_timeline_month_json(request: Request, month: str):
+    """Posts (path + tags) published in a given YYYY-MM month"""
+    if not re.fullmatch(r"\d{4}-\d{2}", month):
+        raise HTTPException(status_code=404, detail="Not found")
+    pages = request.app.state.content_manager.get_pages_by_status("public")
+    return JSONResponse(content=build_tag_timeline_posts(pages).get(month, []))
 
 
 # Site publishing

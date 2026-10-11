@@ -246,6 +246,43 @@ def convert_to_webp(image_bytes: bytes, original_filename: str, quality: int = 9
         return image_bytes, original_filename
 
 
+def build_tag_timeline(pages) -> dict:
+    """Per-month tag counts over a contiguous month range, for the topic drift charts"""
+    dated = [p for p in pages if p.metadata.date]
+    if not dated:
+        return {"months": [], "totals": [], "tags": {}}
+
+    first = min(p.metadata.date for p in dated)
+    last = max(p.metadata.date for p in dated)
+    months = []
+    year, month = first.year, first.month
+    while (year, month) <= (last.year, last.month):
+        months.append(f"{year:04d}-{month:02d}")
+        year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+
+    index = {m: i for i, m in enumerate(months)}
+    totals = [0] * len(months)
+    tags = {}
+    for page in dated:
+        i = index[page.metadata.date.strftime("%Y-%m")]
+        totals[i] += 1
+        for tag in set(page.metadata.tags or []):
+            tags.setdefault(tag, [0] * len(months))[i] += 1
+
+    return {"months": months, "totals": totals, "tags": tags}
+
+
+def build_tag_timeline_posts(pages) -> dict:
+    """Map of "YYYY-MM" -> [[path, tags], ...], newest first"""
+    by_month = {}
+    dated = sorted((p for p in pages if p.metadata.date), key=lambda p: p.metadata.date, reverse=True)
+    for page in dated:
+        by_month.setdefault(page.metadata.date.strftime("%Y-%m"), []).append(
+            [page.path, page.metadata.tags or []]
+        )
+    return by_month
+
+
 class Paginator(Generic[T]):
     """Generic pagination utility"""
     def __init__(self, items: List[T], per_page: int):

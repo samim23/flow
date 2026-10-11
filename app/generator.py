@@ -11,7 +11,10 @@ from jinja2 import Environment, FileSystemLoader, FileSystemBytecodeCache
 from typing import TYPE_CHECKING, Dict, Any, List, Set
 import math
 from datetime import datetime
-from app.utils import clean_content, extract_first_image, get_image_mime_type, Paginator
+from app.utils import (
+    clean_content, extract_first_image, get_image_mime_type, Paginator,
+    build_tag_timeline, build_tag_timeline_posts,
+)
 from app.cache import get_cache, SQLiteCache
 import logging
 from dataclasses import dataclass, field
@@ -892,6 +895,17 @@ class StaticSiteGenerator:
             with open(tags_file, 'w', encoding='utf-8') as f:
                 json.dump(dict(tag_counts), f, separators=(',', ':'))
             logger.debug(f"Generated tag-counts.json with {len(tag_counts)} tags")
+
+            # 3. Topic drift data: tag-timeline.json plus one small post list per month
+            with open(self.output_dir / "tag-timeline.json", 'w', encoding='utf-8') as f:
+                json.dump(build_tag_timeline(public_pages), f, separators=(',', ':'))
+            month_dir = self.output_dir / "tag-timeline"
+            month_dir.mkdir(parents=True, exist_ok=True)
+            for month, posts in build_tag_timeline_posts(public_pages).items():
+                month_file = month_dir / f"{month}.json"
+                payload = json.dumps(posts, separators=(',', ':'), ensure_ascii=False)
+                if not month_file.exists() or month_file.read_text(encoding='utf-8') != payload:
+                    month_file.write_text(payload, encoding='utf-8')
             
         except Exception as e:
             logger.error(f"Error generating posts JSON files: {e}")

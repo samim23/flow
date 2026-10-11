@@ -1,0 +1,558 @@
+{# Topic Drift - streamgraph of top topics per month, ridgeline of all topics #}
+<div class="explore-section drift-section">
+	<h3 class="explore-section-title">Topics over Time</h3>
+	<div class="drift-controls">
+		<div class="drift-modes">
+			<button type="button" class="button_filter button_active" data-mode="stream">Top topics</button>
+			<button type="button" class="button_filter" data-mode="ridge">All topics</button>
+		</div>
+		<div class="drift-compare">
+			<input type="text" id="drift-compare-input" list="drift-tag-list" placeholder="Compare tags…" class="tag-search-input" autocomplete="off">
+			<datalist id="drift-tag-list"></datalist>
+		</div>
+	</div>
+	<div id="drift-chart" class="drift-chart"><p class="drift-hint">Loading topics…</p></div>
+	<div id="drift-legend" class="drift-legend"></div>
+	<p id="drift-hint" class="drift-hint"></p>
+	<div id="drift-tooltip" class="drift-tooltip"></div>
+	<h2 id="drift-posts-title" class="drift-posts-title"></h2>
+	<div id="drift-posts"></div>
+	<button type="button" id="drift-more" class="button_filter drift-more" hidden>Show more posts</button>
+</div>
+
+<script>
+(function () {
+	const STEP = 8;
+	const MIN_RIDGE_POSTS = 10;
+	const POSTS_PAGE = 20;
+	const RANK_WINDOW = 6;
+	const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+	const SVG_NS = "http://www.w3.org/2000/svg";
+
+	const chartEl = document.getElementById("drift-chart");
+	const legendEl = document.getElementById("drift-legend");
+	const hintEl = document.getElementById("drift-hint");
+	const tooltipEl = document.getElementById("drift-tooltip");
+	const postsTitleEl = document.getElementById("drift-posts-title");
+	const postsEl = document.getElementById("drift-posts");
+	const moreBtn = document.getElementById("drift-more");
+	const compareInput = document.getElementById("drift-compare-input");
+
+	const state = { data: null, mode: "stream", topN: STEP, pinned: [], focus: null };
+	const colors = {};
+	const totals = {};
+	const monthCache = {};
+	let postList = { paths: [], shown: 0 };
+	let postsRequest = 0;
+
+	const fmtMonth = (m) => `${MONTHS[+m.slice(5, 7) - 1]} ${m.slice(0, 4)}`;
+	const sum = (arr) => arr.reduce((a, b) => a + b, 0);
+	const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+	function svg(tag, attrs = {}) {
+		const el = document.createElementNS(SVG_NS, tag);
+		for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+		return el;
+	}
+
+	// Monotone cubic tangents (no overshoot), same idea as d3.curveMonotoneX
+	function tangents(xs, ys) {
+		const n = xs.length;
+		const t = new Array(n).fill(0);
+		if (n < 2) return t;
+		const s = [];
+		for (let i = 0; i < n - 1; i++) s.push((ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]));
+		t[0] = s[0];
+		t[n - 1] = s[n - 2];
+		for (let i = 1; i < n - 1; i++) {
+			if (s[i - 1] * s[i] <= 0) continue;
+			const h0 = xs[i] - xs[i - 1];
+			const h1 = xs[i + 1] - xs[i];
+			const p = (s[i - 1] * h1 + s[i] * h0) / (h0 + h1);
+			t[i] = 2 * Math.sign(s[i]) * Math.min(Math.abs(s[i - 1]), Math.abs(s[i]), 0.5 * Math.abs(p));
+		}
+		return t;
+	}
+
+	function curve(xs, ys, reverse) {
+		const t = tangents(xs, ys);
+		const order = xs.map((_, i) => i);
+		if (reverse) order.reverse();
+		const f = (v) => v.toFixed(1);
+		let d = `${reverse ? "L" : "M"}${f(xs[order[0]])},${f(ys[order[0]])}`;
+		for (let k = 1; k < order.length; k++) {
+			const a = order[k - 1];
+			const b = order[k];
+			const dx = (xs[b] - xs[a]) / 3;
+			d += `C${f(xs[a] + dx)},${f(ys[a] + dx * t[a])} ${f(xs[b] - dx)},${f(ys[b] - dx * t[b])} ${f(xs[b])},${f(ys[b])}`;
+		}
+		return d;
+	}
+
+	function yearTicks(el, x, top, bottom, labelY) {
+		state.data.months.forEach((m, i) => {
+			if (i !== 0 && !m.endsWith("-01")) return;
+			el.appendChild(svg("line", { x1: x(i), x2: x(i), y1: top, y2: bottom, class: "drift-tick" }));
+			const label = svg("text", { x: x(i) + 3, y: labelY, class: "drift-tick-label" });
+			label.textContent = m.slice(0, 4);
+			el.appendChild(label);
+		});
+	}
+
+	function indexAt(evt, svgEl, x0, x1) {
+		const n = state.data.months.length;
+		const rect = svgEl.getBoundingClientRect();
+		const px = evt.clientX - rect.left;
+		const i = Math.round(((px - x0) / (x1 - x0)) * (n - 1));
+		return Math.max(0, Math.min(n - 1, i));
+	}
+
+	function showTooltip(evt, lines) {
+		tooltipEl.replaceChildren(...lines.map((line, k) => {
+			const div = document.createElement("div");
+			div.textContent = line;
+			if (k === 0) div.className = "drift-tooltip-title";
+			return div;
+		}));
+		tooltipEl.style.display = "block";
+		const pad = 14;
+		const w = tooltipEl.offsetWidth;
+		const left = evt.clientX + pad + w > window.innerWidth ? evt.clientX - pad - w : evt.clientX + pad;
+		tooltipEl.style.left = `${Math.max(4, left)}px`;
+		tooltipEl.style.top = `${evt.clientY + pad}px`;
+	}
+
+	function hideTooltip() {
+		tooltipEl.style.display = "none";
+	}
+
+	// ---------- Streamgraph ----------
+
+	function streamModel() {
+		const { months, tags } = state.data;
+		const n = months.length;
+		const names = Object.keys(tags);
+		let shown;
+
+		if (state.pinned.length) {
+			shown = state.pinned.map((tag) => ({ tag, values: tags[tag].slice() }));
+		} else {
+			// A tag gets its own band in months where it ranks in the top N, ranked over a
+			// triangular ±RANK_WINDOW-month window so bands don't flicker in and out
+			const active = {};
+			for (let i = 0; i < n; i++) {
+				const lo = Math.max(0, i - RANK_WINDOW);
+				const hi = Math.min(n - 1, i + RANK_WINDOW);
+				names
+					.filter((tag) => tags[tag][i] > 0)
+					.map((tag) => {
+						let score = 0;
+						for (let j = lo; j <= hi; j++) score += tags[tag][j] * (RANK_WINDOW + 1 - Math.abs(j - i));
+						return [tag, score];
+					})
+					.sort((a, b) => b[1] - a[1])
+					.slice(0, state.topN)
+					.forEach(([tag]) => (active[tag] = active[tag] || new Set()).add(i));
+			}
+			shown = Object.keys(active).map((tag) => ({
+				tag,
+				values: tags[tag].map((v, i) => (active[tag].has(i) ? v : 0)),
+			}));
+		}
+
+		shown.forEach((layer) => {
+			layer.display = layer.values.map((_, i) => ((layer.values[i - 1] || 0) + 2 * layer.values[i] + (layer.values[i + 1] || 0)) / 4);
+			layer.total = sum(layer.values);
+			layer.peak = layer.display.indexOf(Math.max(...layer.display));
+		});
+		shown.sort((a, b) => a.peak - b.peak);
+
+		// Inside-out: earliest peaks in the middle, later ones alternate outwards
+		const layers = [];
+		shown.forEach((layer, k) => (k % 2 ? layers.push(layer) : layers.unshift(layer)));
+
+		const heights = months.map((_, i) => layers.reduce((s, layer) => s + layer.display[i], 0));
+		let base = heights.map((h) => -h / 2);
+		layers.forEach((layer) => {
+			layer.y0 = base;
+			layer.y1 = base.map((b, i) => b + layer.display[i]);
+			base = layer.y1;
+		});
+		return { layers, shown, max: Math.max(1, ...heights) };
+	}
+
+	// Greedy placement: thickest bands first, skip any label that would overlap one already placed
+	function placeLabels(candidates) {
+		const placed = [];
+		candidates
+			.sort((a, b) => b.thickness - a.thickness)
+			.forEach((c) => {
+				const w = c.text.length * c.size * 0.6;
+				const box = { x0: c.x - w / 2, x1: c.x + w / 2, y0: c.y - c.size / 2, y1: c.y + c.size / 2 };
+				if (placed.some((p) => box.x0 < p.box.x1 && box.x1 > p.box.x0 && box.y0 < p.box.y1 && box.y1 > p.box.y0)) return;
+				placed.push({ ...c, box });
+			});
+		return placed;
+	}
+
+	function renderStream() {
+		const { months } = state.data;
+		const n = months.length;
+		const W = chartEl.clientWidth || 800;
+		const H = Math.round(Math.max(260, Math.min(440, W * 0.5)));
+		const padX = 6;
+		const padT = 8;
+		const padB = 24;
+		const model = streamModel();
+		const x = (i) => padX + (n === 1 ? 0 : (i * (W - 2 * padX)) / (n - 1));
+		const xs = months.map((_, i) => x(i));
+		const scale = (H - padT - padB) / model.max;
+		const mid = padT + (H - padT - padB) / 2;
+		const y = (v) => mid - v * scale;
+
+		const root = svg("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, class: "drift-svg" });
+		yearTicks(root, x, padT, H - padB, H - 8);
+
+		const candidates = [];
+		model.layers.forEach((layer) => {
+			const top = layer.y1.map(y);
+			const bottom = layer.y0.map(y);
+			const path = svg("path", {
+				d: curve(xs, top, false) + curve(xs, bottom, true) + "Z",
+				fill: colors[layer.tag],
+				class: "drift-band" + (state.focus && state.focus !== layer.tag ? " dimmed" : ""),
+			});
+			path.dataset.tag = layer.tag;
+			root.appendChild(path);
+
+			// Label at the thickest point where the text fits horizontally inside the chart
+			const size = Math.min(13, Math.max(9, Math.max(...layer.display) * scale * 0.55));
+			const halfWidth = (layer.tag.length * size * 0.6) / 2 + 2;
+			let thickest = -1;
+			layer.display.forEach((v, i) => {
+				if (xs[i] < halfWidth || xs[i] > W - halfWidth) return;
+				if (thickest < 0 || v > layer.display[thickest]) thickest = i;
+			});
+			const thickness = thickest < 0 ? 0 : layer.display[thickest] * scale;
+			if (thickness >= 12) {
+				candidates.push({
+					text: layer.tag,
+					x: xs[thickest],
+					y: (top[thickest] + bottom[thickest]) / 2,
+					size,
+					thickness,
+				});
+			}
+		});
+		placeLabels(candidates).forEach((c) => {
+			const label = svg("text", { x: c.x, y: c.y, class: "drift-band-label", "font-size": c.size.toFixed(1) });
+			label.textContent = c.text;
+			root.appendChild(label);
+		});
+
+		const guide = svg("line", { y1: padT, y2: H - padB, class: "drift-guide", visibility: "hidden" });
+		root.appendChild(guide);
+
+		root.addEventListener("mousemove", (evt) => {
+			const i = indexAt(evt, root, padX, W - padX);
+			guide.setAttribute("x1", xs[i]);
+			guide.setAttribute("x2", xs[i]);
+			guide.setAttribute("visibility", "visible");
+			const tag = evt.target.dataset && evt.target.dataset.tag;
+			const monthTotal = state.data.totals[i];
+			if (!tag) {
+				showTooltip(evt, [fmtMonth(months[i]), plural(monthTotal, "post")]);
+			} else {
+				const value = state.data.tags[tag][i];
+				showTooltip(evt, [`${tag} · ${fmtMonth(months[i])}`, `${plural(value, "post")} of ${monthTotal}`]);
+			}
+		});
+		root.addEventListener("mouseleave", () => {
+			guide.setAttribute("visibility", "hidden");
+			hideTooltip();
+		});
+		root.addEventListener("click", (evt) => {
+			const tag = evt.target.dataset && evt.target.dataset.tag;
+			if (tag) showPosts(tag, months[indexAt(evt, root, padX, W - padX)]);
+		});
+
+		chartEl.replaceChildren(root);
+		renderStreamLegend(model);
+		hintEl.textContent = state.pinned.length
+			? "Comparing selected tags. Click a band to see its posts from that month."
+			: `Showing the ${state.topN} biggest topics around each month. Band height is the number of posts per topic and month (posts with several tags count once per tag). Click a band to see its posts.`;
+	}
+
+	function chip(tag, { color, active, onClick, removable }) {
+		const btn = document.createElement("button");
+		btn.type = "button";
+		btn.className = "drift-chip" + (active ? " drift-chip-active" : "");
+		const swatch = document.createElement("span");
+		swatch.className = "drift-swatch";
+		swatch.style.background = color;
+		btn.append(swatch, document.createTextNode(tag + (removable ? " ×" : "")));
+		btn.addEventListener("click", onClick);
+		return btn;
+	}
+
+	function actionButton(text, onClick) {
+		const btn = document.createElement("button");
+		btn.type = "button";
+		btn.className = "drift-chip drift-chip-action";
+		btn.textContent = text;
+		btn.addEventListener("click", onClick);
+		return btn;
+	}
+
+	function renderStreamLegend(model) {
+		const items = [];
+		if (state.pinned.length) {
+			state.pinned.forEach((tag) => items.push(chip(tag, {
+				color: colors[tag],
+				removable: true,
+				onClick: () => {
+					state.pinned = state.pinned.filter((t) => t !== tag);
+					render();
+				},
+			})));
+			items.push(actionButton("Back to top topics", () => {
+				state.pinned = [];
+				render();
+			}));
+		} else {
+			model.shown
+				.slice()
+				.sort((a, b) => b.total - a.total)
+				.forEach((layer) => items.push(chip(layer.tag, {
+					color: colors[layer.tag],
+					active: state.focus === layer.tag,
+					onClick: () => {
+						state.focus = state.focus === layer.tag ? null : layer.tag;
+						render();
+					},
+				})));
+			if (state.topN < Object.keys(state.data.tags).length) {
+				items.push(actionButton("＋ More topics", () => {
+					state.topN += STEP;
+					render();
+				}));
+			}
+			if (state.topN > STEP) {
+				items.push(actionButton("− Fewer", () => {
+					state.topN = Math.max(STEP, state.topN - STEP);
+					render();
+				}));
+			}
+		}
+		legendEl.replaceChildren(...items);
+	}
+
+	// ---------- Ridgeline ----------
+
+	function renderRidge() {
+		const { months, tags } = state.data;
+		const n = months.length;
+		const rows = Object.entries(tags)
+			.map(([tag, values]) => {
+				const smooth = values.map((_, i) => (
+					(values[i - 2] || 0) + 2 * (values[i - 1] || 0) + 3 * values[i] + 2 * (values[i + 1] || 0) + (values[i + 2] || 0)
+				) / 9);
+				const max = Math.max(...smooth);
+				return { tag, values, smooth, max, total: totals[tag], peak: smooth.indexOf(max) };
+			})
+			.filter((row) => row.total >= MIN_RIDGE_POSTS)
+			.sort((a, b) => a.peak - b.peak || b.total - a.total);
+
+		const W = chartEl.clientWidth || 800;
+		const labelW = Math.round(Math.min(130, W * 0.3));
+		const rowH = 17;
+		const amp = 36;
+		const padT = amp + 18;
+		const padB = 24;
+		const H = padT + rows.length * rowH + padB;
+		const x0 = labelW;
+		const x1 = W - 6;
+		const x = (i) => x0 + (n === 1 ? 0 : (i * (x1 - x0)) / (n - 1));
+		const xs = months.map((_, i) => x(i));
+
+		const root = svg("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, class: "drift-svg drift-ridge" });
+		yearTicks(root, x, 14, H - padB, 11);
+
+		rows.forEach((row, k) => {
+			const base = padT + (k + 1) * rowH;
+			const ys = row.smooth.map((v) => base - (v / row.max) * amp);
+			const group = svg("g", { class: "drift-row" });
+			const path = svg("path", {
+				d: curve(xs, ys, false) + `L${x1.toFixed(1)},${base}L${x0.toFixed(1)},${base}Z`,
+				fill: colors[row.tag],
+				class: "drift-ridge-area",
+			});
+			path.dataset.tag = row.tag;
+			group.appendChild(path);
+
+			const link = svg("a", { href: `/tag/${encodeURIComponent(row.tag)}/`, class: "drift-ridge-label" });
+			const label = svg("text", { x: labelW - 8, y: base - 3 });
+			label.textContent = row.tag;
+			link.appendChild(label);
+			group.appendChild(link);
+			root.appendChild(group);
+		});
+
+		const guide = svg("line", { y1: 14, y2: H - padB, class: "drift-guide", visibility: "hidden" });
+		root.appendChild(guide);
+
+		const rowAt = (evt) => {
+			const tag = evt.target.dataset && evt.target.dataset.tag;
+			if (tag) return rows.find((row) => row.tag === tag);
+			const rect = root.getBoundingClientRect();
+			const k = Math.floor((evt.clientY - rect.top - padT) / rowH);
+			return rows[k] || null;
+		};
+
+		root.addEventListener("mousemove", (evt) => {
+			const rect = root.getBoundingClientRect();
+			if (evt.clientX - rect.left < x0) {
+				guide.setAttribute("visibility", "hidden");
+				hideTooltip();
+				return;
+			}
+			const i = indexAt(evt, root, x0, x1);
+			guide.setAttribute("x1", xs[i]);
+			guide.setAttribute("x2", xs[i]);
+			guide.setAttribute("visibility", "visible");
+			const row = rowAt(evt);
+			if (!row) return hideTooltip();
+			showTooltip(evt, [`${row.tag} · ${fmtMonth(months[i])}`, plural(row.values[i], "post"), `${plural(row.total, "post")} in total`]);
+		});
+		root.addEventListener("mouseleave", () => {
+			guide.setAttribute("visibility", "hidden");
+			hideTooltip();
+		});
+		root.addEventListener("click", (evt) => {
+			if (evt.target.closest && evt.target.closest("a")) return;
+			const row = rowAt(evt);
+			if (row) showPosts(row.tag, months[indexAt(evt, root, x0, x1)]);
+		});
+
+		chartEl.replaceChildren(root);
+		legendEl.replaceChildren();
+		hintEl.textContent = `All ${rows.length} topics with at least ${MIN_RIDGE_POSTS} posts, ordered by when each one peaked. Each row is scaled to its own peak. Click anywhere on a row to see that month's posts, or a name to open the tag.`;
+	}
+
+	// ---------- Posts below the chart ----------
+
+	async function showPosts(tag, month) {
+		const request = ++postsRequest;
+		postsTitleEl.textContent = `#${tag} · ${fmtMonth(month)}`;
+		postsEl.replaceChildren();
+		moreBtn.hidden = true;
+
+		if (!monthCache[month]) {
+			try {
+				const response = await fetch(`/tag-timeline/${month}.json`);
+				monthCache[month] = response.ok ? await response.json() : [];
+			} catch (e) {
+				monthCache[month] = [];
+			}
+		}
+		if (request !== postsRequest) return;
+
+		const paths = monthCache[month].filter(([, postTags]) => postTags.includes(tag)).map(([path]) => path);
+		postsTitleEl.textContent = `#${tag} · ${fmtMonth(month)} · ${plural(paths.length, "post")}`;
+		postList = { paths, shown: 0 };
+		showMorePosts();
+		postsTitleEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+		if (window._paq) window._paq.push(["trackEvent", "topic-drift", tag, month]);
+	}
+
+	function showMorePosts() {
+		const next = postList.paths.slice(postList.shown, postList.shown + POSTS_PAGE);
+		renderExplorePosts(postsEl, next);
+		postList.shown += next.length;
+		moreBtn.hidden = postList.shown >= postList.paths.length;
+	}
+
+	// ---------- Wiring ----------
+
+	function render() {
+		hideTooltip();
+		if (state.mode === "ridge") renderRidge();
+		else renderStream();
+	}
+
+	function setMode(mode) {
+		state.mode = mode;
+		state.focus = null;
+		document.querySelectorAll(".drift-modes .button_filter").forEach((btn) => {
+			btn.classList.toggle("button_active", btn.dataset.mode === mode);
+		});
+		render();
+	}
+
+	function addCompareTag() {
+		const value = compareInput.value.trim().toLowerCase();
+		const tag = Object.keys(state.data.tags).find((t) => t.toLowerCase() === value);
+		if (!tag) return;
+		if (!state.pinned.includes(tag)) state.pinned.push(tag);
+		compareInput.value = "";
+		state.focus = null;
+		if (state.mode !== "stream") setMode("stream");
+		else render();
+	}
+
+	async function init() {
+		try {
+			const response = await fetch("/tag-timeline.json");
+			if (!response.ok) throw new Error(`HTTP ${response.status}`);
+			state.data = await response.json();
+		} catch (e) {
+			console.error("Topic drift data unavailable:", e);
+			chartEl.replaceChildren();
+			return;
+		}
+		if (!state.data.months.length) {
+			chartEl.replaceChildren();
+			return;
+		}
+
+		const byTotal = Object.keys(state.data.tags)
+			.map((tag) => [tag, sum(state.data.tags[tag])])
+			.sort((a, b) => b[1] - a[1]);
+		byTotal.forEach(([tag, total], rank) => {
+			totals[tag] = total;
+			colors[tag] = `hsl(${Math.round((rank * 137.508 + 200) % 360)}, 55%, ${rank % 2 ? 68 : 60}%)`;
+		});
+		document.getElementById("drift-tag-list").replaceChildren(...byTotal.map(([tag]) => {
+			const option = document.createElement("option");
+			option.value = tag;
+			return option;
+		}));
+
+		document.querySelectorAll(".drift-modes .button_filter").forEach((btn) => {
+			btn.addEventListener("click", () => setMode(btn.dataset.mode));
+		});
+		compareInput.addEventListener("change", addCompareTag);
+		compareInput.addEventListener("keydown", (evt) => {
+			if (evt.key === "Enter") addCompareTag();
+		});
+		moreBtn.addEventListener("click", showMorePosts);
+
+		let lastWidth = chartEl.clientWidth;
+		let resizeTimer;
+		window.addEventListener("resize", () => {
+			clearTimeout(resizeTimer);
+			resizeTimer = setTimeout(() => {
+				if (chartEl.clientWidth !== lastWidth) {
+					lastWidth = chartEl.clientWidth;
+					render();
+				}
+			}, 150);
+		});
+
+		render();
+	}
+
+	if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+	else init();
+})();
+</script>

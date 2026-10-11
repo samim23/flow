@@ -18,6 +18,40 @@
 </div>
 
 <script>
+	// Fetches each post page and appends its .h-entry to container
+	function renderExplorePosts(container, postPaths) {
+		postPaths.forEach((postPath) => {
+			var postContainer = document.createElement("div");
+			postContainer.className = "explore-post-container";
+			container.appendChild(postContainer);
+
+			fetch(`/p/${postPath}`)
+			.then((response) => response.text())
+			.then((html) => {
+				var tempDiv = document.createElement("div");
+				tempDiv.innerHTML = html;
+				var content = tempDiv.querySelector(".h-entry");
+				if (content) {
+				postContainer.innerHTML = content.innerHTML;
+				var dateElement = postContainer.querySelector(".dt-published");
+				if (dateElement) {
+					var link = document.createElement("a");
+					link.href = `/p/${postPath}`;
+					dateElement.parentNode.replaceChild(link, dateElement);
+					link.appendChild(dateElement);
+				}
+				}
+
+				formatDate();
+				formatContent();
+				formatMedia();
+
+				if (typeof repost === "function") repost();
+				if (typeof editpost === "function") editpost();
+			});
+		});
+	}
+
 	// Lazy load Chart.js
 	(function() {
 		var script = document.createElement('script');
@@ -180,41 +214,8 @@
 
 				if (postPerDay.length > 0) {
 				document.getElementById("postsdate").textContent = postsDay;
-
-				postPerDay.slice().reverse().forEach((postPath) => {
-					var postContainer = document.createElement("div");
-					postContainer.className = "explore-post-container";
-					postsContainer.appendChild(postContainer);
-
-					fetch(`/p/${postPath}`)
-					.then((response) => response.text())
-					.then((html) => {
-						var tempDiv = document.createElement("div");
-						tempDiv.innerHTML = html;
-						var content = tempDiv.querySelector(".h-entry");
-						if (content) {
-						postContainer.innerHTML = content.innerHTML;
-						var dateElement = postContainer.querySelector(".dt-published");
-						if (dateElement) {
-							var link = document.createElement("a");
-							link.href = `/p/${postPath}`;
-							dateElement.parentNode.replaceChild(link, dateElement);
-							link.appendChild(dateElement);
-						}
-						}
-
-						// Call format functions for newly added content
-						formatDate();
-						formatContent();
-						formatMedia();
-
-						// Additional hooks (if required)
-						if (typeof repost === "function") repost();
-						if (typeof editpost === "function") editpost();
-					});
-				});
-
-				window._paq.push(["trackEvent", "explore", postsDay]);
+				renderExplorePosts(postsContainer, postPerDay.slice().reverse());
+				if (window._paq) window._paq.push(["trackEvent", "explore", postsDay]);
 				}
 			}
 		},
